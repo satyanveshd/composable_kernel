@@ -16,7 +16,12 @@
 #ifndef CK_TIME_KERNEL
 #define CK_TIME_KERNEL 1
 #endif
-
+template <auto ...val>
+[[deprecated("Help function to print value")]]
+inline constexpr void CK_TILE_PRINT() {}
+template <typename ...type>
+[[deprecated("Help function to print value")]]
+inline constexpr void CK_TILE_PRINT() {}
 // constant address space for kernel parameter
 // https://llvm.org/docs/AMDGPUUsage.html#address-spaces
 #define CK_CONSTANT_ADDRESS_SPACE __attribute__((address_space(4)))

@@ -507,6 +507,7 @@ struct BlockwiseGemmXdlops_pipeline_bpreshuffle_v3<BlockGemmPipelineScheduler::I
                         CThreadBuffer& c_thread_buf,
                         index_t num_loop) const
     {
+        CK_TILE_PRINT<KRepeat>();
         ignore = b_block_buf;
         __builtin_amdgcn_sched_barrier(0);
         auto a_thread_buf = make_static_buffer<AddressSpaceEnum::Vgpr, ComputeDataType>(
