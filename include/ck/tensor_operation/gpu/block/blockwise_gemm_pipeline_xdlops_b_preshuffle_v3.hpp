@@ -472,7 +472,7 @@ struct BlockwiseGemmXdlops_pipeline_bpreshuffle_v3<BlockGemmPipelineScheduler::I
             static_for<0, KRepeat, 1>{}([&](auto k0) {
                 static_for<0, KGroup, 1>{}([&](auto kg0) {
                     a_thread_copy_.Run(a_block_desc_m0_m1_m2_k0_k1_k2,
-                                       make_tuple(m0, I0, I0, Number<k0 * 2 + kg0>{}, I0, I0),
+                                       make_tuple(m0, I0, I0, Number<k0 * KGroup+ kg0>{}, I0, I0),
                                        a_block_buf.At(I0),
                                        a_thread_desc_,
                                        make_tuple(m0, I0, I0, k0, I0, Number<kg0 * A_K1>{}),
@@ -551,7 +551,7 @@ struct BlockwiseGemmXdlops_pipeline_bpreshuffle_v3<BlockGemmPipelineScheduler::I
                                         make_tuple(Number<(m0 + 2) % MRepeat>{},
                                                    I0,
                                                    I0,
-                                                   Number<k0 * 2 + kg0>{},
+                                                   Number<k0 * KGroup+ kg0>{},
                                                    I0,
                                                    I0),
                                         a_block_buf.At(local_read_buf),
@@ -577,7 +577,7 @@ struct BlockwiseGemmXdlops_pipeline_bpreshuffle_v3<BlockGemmPipelineScheduler::I
                                         make_tuple(Number<(m0 + 2) % MRepeat>{},
                                                    I0,
                                                    I0,
-                                                   Number<k0 * 2 + kg0>{},
+                                                   Number<k0 * KGroup+ kg0>{},
                                                    I0,
                                                    I0),
                                         a_block_buf.At(local_read_buf),
@@ -603,7 +603,7 @@ struct BlockwiseGemmXdlops_pipeline_bpreshuffle_v3<BlockGemmPipelineScheduler::I
                                         make_tuple(Number<(m0 + 2) % MRepeat>{},
                                                    I0,
                                                    I0,
-                                                   Number<k0 * 2 + kg0>{},
+                                                   Number<k0 * KGroup+ kg0>{},
                                                    I0,
                                                    I0),
                                         a_block_buf.At(mfma_reg_buf),
@@ -678,7 +678,7 @@ struct BlockwiseGemmXdlops_pipeline_bpreshuffle_v3<BlockGemmPipelineScheduler::I
                                 make_tuple(Number<(m0 + 2) % MRepeat>{},
                                            I0,
                                            I0,
-                                           Number<k0 * 2 + kg0>{},
+                                           Number<k0 * KGroup+ kg0>{},
                                            I0,
                                            I0),
                                 a_block_buf.At(I1),
@@ -698,7 +698,7 @@ struct BlockwiseGemmXdlops_pipeline_bpreshuffle_v3<BlockGemmPipelineScheduler::I
                                 make_tuple(Number<(m0 + 2) % MRepeat>{},
                                            I0,
                                            I0,
-                                           Number<k0 * 2 + kg0>{},
+                                           Number<k0 * KGroup+ kg0>{},
                                            I0,
                                            I0),
                                 a_block_buf.At(I1),
@@ -718,7 +718,7 @@ struct BlockwiseGemmXdlops_pipeline_bpreshuffle_v3<BlockGemmPipelineScheduler::I
                                 make_tuple(Number<(m0 + 2) % MRepeat>{},
                                            I0,
                                            I0,
-                                           Number<k0 * 2 + kg0>{},
+                                           Number<k0 * KGroup+ kg0>{},
                                            I0,
                                            I0),
                                 a_block_buf.At(I0),
@@ -767,7 +767,7 @@ struct BlockwiseGemmXdlops_pipeline_bpreshuffle_v3<BlockGemmPipelineScheduler::I
                             a_thread_copy_.Run(
                                 a_block_desc_m0_m1_m2_k0_k1_k2,
                                 make_tuple(
-                                    Number<m0 + 2>{}, I0, I0, Number<k0 * 2 + kg0>{}, I0, I0),
+                                    Number<m0 + 2>{}, I0, I0, Number<k0 * KGroup+ kg0>{}, I0, I0),
                                 a_block_buf.At(I1),
                                 a_thread_desc_,
                                 make_tuple(Number<(m0 + 2 + HotloopLocalBufSwitch) % 2>{},
@@ -822,7 +822,7 @@ struct BlockwiseGemmXdlops_pipeline_bpreshuffle_v3<BlockGemmPipelineScheduler::I
                             a_thread_copy_.Run(
                                 a_block_desc_m0_m1_m2_k0_k1_k2,
                                 make_tuple(
-                                    Number<m0 + 2>{}, I0, I0, Number<k0 * 2 + kg0>{}, I0, I0),
+                                    Number<m0 + 2>{}, I0, I0, Number<k0 * KGroup+ kg0>{}, I0, I0),
                                 a_block_buf.At(I0),
                                 a_thread_desc_,
                                 make_tuple(
