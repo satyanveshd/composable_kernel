@@ -336,9 +336,11 @@ struct BlockwiseGemmXdlops_pipeline_bpreshuffle_v3<BlockGemmPipelineScheduler::I
 
         constexpr auto buffer_load_issue_point_b = 0;
         constexpr auto buffer_load_issue_point_interval_more =
-            num_mfma_perstage / buffer_load_perstage_more;
+            math::integer_divide_ceil(num_mfma_perstage, buffer_load_perstage_more);
         constexpr auto buffer_load_issue_point_interval_less =
-            num_mfma_perstage / buffer_load_perstage_less;
+            buffer_load_perstage_less == 0
+                ? INT32_MAX
+                : math::integer_divide_ceil(num_mfma_perstage, buffer_load_perstage_less);
         constexpr auto ds_write_issue_point      = 0;
         constexpr auto buffer_load_issue_point_a = num_mfma_perstage >= 3 ? 1 : 0;
 
