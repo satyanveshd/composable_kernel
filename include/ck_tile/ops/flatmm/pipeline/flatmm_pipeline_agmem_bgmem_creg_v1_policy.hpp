@@ -49,9 +49,10 @@ struct UniversalFlatmmPipelineAgBgCrPolicy
 
         return a_lds_block_desc;
 #elif defined(USING_MFMA_32x32x16)
+        using ADataType = remove_cvref_t<typename Problem::ADataType>;
         constexpr index_t kMPerBlock = Problem::BlockGemmShape::kM;
         constexpr index_t kKPerBlock = Problem::BlockGemmShape::kK;
-        constexpr index_t kKPack     = GetSmemPackA<Problem>();
+        //constexpr index_t kKPack     = GetSmemPackA<Problem>();
         constexpr index_t K1         = Problem::VectorLoadSize / sizeof(ADataType);
 
         constexpr auto a_lds_block_desc_0 = make_naive_tensor_descriptor(
