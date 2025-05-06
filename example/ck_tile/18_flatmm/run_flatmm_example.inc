@@ -1,6 +1,20 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2024-2025, Advanced Micro Devices, Inc. All rights reserved.
 #pragma once
+#include <type_traits>
+
+template <typename T>
+constexpr const char* DataTypeToString() {
+    if constexpr (std::is_same_v<T, ck_tile::half_t>) {
+        return "fp16";
+    } else if constexpr (std::is_same_v<T, ck_tile::fp8_t>) {
+        return "fp8";
+    } else if constexpr (std::is_same_v<T, ck_tile::bf8_t>) {
+        return "bf8";
+    } else {
+        return "unknown";
+    }
+}
 
 template <typename Layout>
 static constexpr inline auto is_row_major(Layout layout_)
@@ -98,7 +112,7 @@ float invoke_flatmm(ck_tile::DeviceMem& a_dev_buf,
     float tflops     = static_cast<float>(flop) / 1.E9 / ave_time;
     float gb_per_sec = num_byte / 1.E6 / ave_time;
 
-    std::cout << "Run Flatmm kernel with M =" << M << " N =" << N << " K =" << K
+    std::cout << "Run Flatmm kernel with DataType = " << DataTypeToString<ADataType>() << " M =" << M << " N =" << N << " K =" << K
               << " StrideA =" << stride_A << " StrideB =" << stride_B << " StrideC =" << stride_C
               << " : " << ave_time << " ms, " << tflops << " TFlops, " << gb_per_sec << " GB/s, "
               << std::endl;
@@ -349,3 +363,4 @@ int run_flatmm_example(int argc, char* argv[])
         throw std::runtime_error("Unsupported data layout configuration for A,B and C tensors!");
     }
 }
+

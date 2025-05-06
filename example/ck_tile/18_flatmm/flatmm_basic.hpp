@@ -124,6 +124,11 @@ struct DataTypeTraits<ck_tile::bf8_t>
 {
     static constexpr const char* name = "bf8";
 };
+template <typename T>
+struct is_8bit_type
+    : std::bool_constant<std::is_same_v<T, ck_tile::fp8_t> || std::is_same_v<T, ck_tile::bf8_t>>
+{
+};
 
 auto create_args(int argc, char* argv[])
 {
