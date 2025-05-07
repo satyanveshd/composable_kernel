@@ -24,25 +24,25 @@ static constexpr inline auto is_row_major(Layout layout_)
 }
 
 // mfma_type, 0:32x32, 1:16x16
-template <typename T>
+template <typename T, ck_tile::index_t GemmCfgVer>
 auto shuffle_b(const ck_tile::HostTensor<T>& t)
 {
     assert(t.get_lengths().size() == 2);
     int n_ = t.get_lengths()[1];
     int k_ = t.get_lengths()[0];
 
-    if constexpr(GemmConfig<T>::N_Warp_Tile == 32)
+    if constexpr(GemmConfig<T, GemmCfgVer>::N_Warp_Tile == 32)
     {
         ck_tile::HostTensor<T> t_view(
-            {n_ / 32, 32, k_ / GemmConfig<T>::K_Warp_Tile, 2, GemmConfig<T>::K_Warp_Tile / 2});
+            {n_ / 32, 32, k_ / GemmConfig<T, GemmCfgVer>::K_Warp_Tile, 2, GemmConfig<T, GemmCfgVer>::K_Warp_Tile / 2});
         std::copy(t.begin(), t.end(), t_view.begin());
         return ck_tile::reference_permute(t_view, {0, 2, 3, 1, 4});
     }
     else
     {
-        static_assert(GemmConfig<T>::N_Warp_Tile == 16);
+        static_assert(GemmConfig<T, GemmCfgVer>::N_Warp_Tile == 16);
         ck_tile::HostTensor<T> t_view(
-            {n_ / 16, 16, k_ / GemmConfig<T>::K_Warp_Tile, 4, GemmConfig<T>::K_Warp_Tile / 4});
+            {n_ / 16, 16, k_ / GemmConfig<T, GemmCfgVer>::K_Warp_Tile, 4, GemmConfig<T, GemmCfgVer>::K_Warp_Tile / 4});
         std::copy(t.begin(), t.end(), t_view.begin());
         return ck_tile::reference_permute(t_view, {0, 2, 3, 1, 4});
     }
@@ -73,6 +73,7 @@ template <typename ADataType,
           typename BDataType,
           typename AccDataType,
           typename CDataType,
+          ck_tile::index_t GemmCfgVer,
           typename ALayout,
           typename BLayout,
           typename CLayout>
@@ -103,7 +104,7 @@ float invoke_flatmm(ck_tile::DeviceMem& a_dev_buf,
     args.stride_C = stride_C;
 
     float ave_time =
-        flatmm_calc<ADataType, BDataType, AccDataType, CDataType, ALayout, BLayout, CLayout>(
+        flatmm_calc<ADataType, BDataType, AccDataType, CDataType, GemmCfgVer, ALayout, BLayout, CLayout>(
             args, ck_tile::stream_config{nullptr, true, 1, n_warmup, n_repeat});
 
     std::size_t flop = std::size_t(2) * M * N * K;
@@ -124,6 +125,7 @@ template <typename ADataType,
           typename BDataType,
           typename AccDataType,
           typename CDataType,
+          ck_tile::index_t GemmCfgVer,
           typename ALayout,
           typename BLayout,
           typename CLayout>
@@ -171,11 +173,11 @@ int run_flatmm_example_with_layouts(int argc,
     c_rslt_host.SetZero();
 
     // do pre-shuffle
-    ck_tile::HostTensor<BDataType> b_shuffle_host = shuffle_b(b_origin_host);
+    ck_tile::HostTensor<BDataType> b_shuffle_host = shuffle_b<BDataType, GemmCfgVer>(b_origin_host);
     ck_tile::DeviceMem b_shuffle_dev_buf(b_shuffle_host.get_element_space_size_in_bytes());
     b_shuffle_dev_buf.ToDevice(b_shuffle_host.data());
 
-    invoke_flatmm<ADataType, BDataType, AccDataType, CDataType, ALayout, BLayout, CLayout>(
+    invoke_flatmm<ADataType, BDataType, AccDataType, CDataType, GemmCfgVer, ALayout, BLayout, CLayout>(
         a_dev_buf,
         b_shuffle_dev_buf,
         c_dev_buf,
@@ -290,6 +292,7 @@ int run_flatmm_example(int argc, char* argv[])
     std::string a_layout  = arg_parser.get_str("a_layout");
     std::string b_layout  = arg_parser.get_str("b_layout");
     std::string data_type = arg_parser.get_str("prec");
+    ck_tile::index_t cfg_ver   = arg_parser.get_int("cfg_ver");
 
     if(a_layout == "R" && b_layout == "C")
     {
@@ -328,6 +331,8 @@ int run_flatmm_example(int argc, char* argv[])
         #endif
         if(data_type == "fp8")
         {
+            if (cfg_ver == 0)
+            {
             using Types       = GemmBasicTypeConfig<ck_tile::fp8_t>;
             using ADataType   = Types::ADataType;
             using BDataType   = Types::BDataType;
@@ -337,10 +342,113 @@ int run_flatmm_example(int argc, char* argv[])
                                                    BDataType,
                                                    AccDataType,
                                                    CDataType,
+                                                   0,
                                                    Row,
                                                    Col,
                                                    Row>(argc, argv, Row{}, Col{}, Row{});
+            }
+            else if (cfg_ver == 1)
+            {
+            using Types       = GemmBasicTypeConfig<ck_tile::fp8_t>;
+            using ADataType   = Types::ADataType;
+            using BDataType   = Types::BDataType;
+            using AccDataType = Types::AccDataType;
+            using CDataType   = Types::CDataType;
+            return run_flatmm_example_with_layouts<ADataType,
+                                                   BDataType,
+                                                   AccDataType,
+                                                   CDataType,
+                                                   1,
+                                                   Row,
+                                                   Col,
+                                                   Row>(argc, argv, Row{}, Col{}, Row{});
+            }
+            else if (cfg_ver == 2)
+            {
+            using Types       = GemmBasicTypeConfig<ck_tile::fp8_t>;
+            using ADataType   = Types::ADataType;
+            using BDataType   = Types::BDataType;
+            using AccDataType = Types::AccDataType;
+            using CDataType   = Types::CDataType;
+            return run_flatmm_example_with_layouts<ADataType,
+                                                   BDataType,
+                                                   AccDataType,
+                                                   CDataType,
+                                                   2,
+                                                   Row,
+                                                   Col,
+                                                   Row>(argc, argv, Row{}, Col{}, Row{});
+            }
+            else if (cfg_ver == 3)
+            {
+            using Types       = GemmBasicTypeConfig<ck_tile::fp8_t>;
+            using ADataType   = Types::ADataType;
+            using BDataType   = Types::BDataType;
+            using AccDataType = Types::AccDataType;
+            using CDataType   = Types::CDataType;
+            return run_flatmm_example_with_layouts<ADataType,
+                                                   BDataType,
+                                                   AccDataType,
+                                                   CDataType,
+                                                   3,
+                                                   Row,
+                                                   Col,
+                                                   Row>(argc, argv, Row{}, Col{}, Row{});
+            }
+            else if (cfg_ver == 4)
+            {
+            using Types       = GemmBasicTypeConfig<ck_tile::fp8_t>;
+            using ADataType   = Types::ADataType;
+            using BDataType   = Types::BDataType;
+            using AccDataType = Types::AccDataType;
+            using CDataType   = Types::CDataType;
+            return run_flatmm_example_with_layouts<ADataType,
+                                                   BDataType,
+                                                   AccDataType,
+                                                   CDataType,
+                                                   4,
+                                                   Row,
+                                                   Col,
+                                                   Row>(argc, argv, Row{}, Col{}, Row{});
+            }
+            else if (cfg_ver == 5)
+            {
+            using Types       = GemmBasicTypeConfig<ck_tile::fp8_t>;
+            using ADataType   = Types::ADataType;
+            using BDataType   = Types::BDataType;
+            using AccDataType = Types::AccDataType;
+            using CDataType   = Types::CDataType;
+            return run_flatmm_example_with_layouts<ADataType,
+                                                   BDataType,
+                                                   AccDataType,
+                                                   CDataType,
+                                                   5,
+                                                   Row,
+                                                   Col,
+                                                   Row>(argc, argv, Row{}, Col{}, Row{});
+            }
+            else if (cfg_ver == 6)
+            {
+            using Types       = GemmBasicTypeConfig<ck_tile::fp8_t>;
+            using ADataType   = Types::ADataType;
+            using BDataType   = Types::BDataType;
+            using AccDataType = Types::AccDataType;
+            using CDataType   = Types::CDataType;
+            return run_flatmm_example_with_layouts<ADataType,
+                                                   BDataType,
+                                                   AccDataType,
+                                                   CDataType,
+                                                   6,
+                                                   Row,
+                                                   Col,
+                                                   Row>(argc, argv, Row{}, Col{}, Row{});
+            }
+            else
+            {
+                throw std::runtime_error("Unsupported config version for this operation !!!");
+            }
         }
+        #if 0
         else if(data_type == "bf8")
         {
             using Types       = GemmBasicTypeConfig<ck_tile::bf8_t>;
@@ -356,6 +464,7 @@ int run_flatmm_example(int argc, char* argv[])
                                                    Col,
                                                    Row>(argc, argv, Row{}, Col{}, Row{});
         }
+        #endif
         else
         {
             throw std::runtime_error("Unsupported data type for this operation !!!");
