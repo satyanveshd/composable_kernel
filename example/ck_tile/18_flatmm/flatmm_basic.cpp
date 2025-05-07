@@ -16,6 +16,7 @@ template <typename ADataType,
           typename BDataType,
           typename AccDataType,
           typename CDataType,
+          ck_tile::index_t GemmCfgVer,
           typename ALayout,
           typename BLayout,
           typename CLayout>
@@ -30,17 +31,17 @@ float flatmm_calc(const ck_tile::FlatmmHostArgs& args, const ck_tile::stream_con
 
     // This part comes from the Codegen
     static_assert(sizeof(ADataType) == 2 || sizeof(ADataType) == 1);
-    constexpr ck_tile::index_t M_Tile = GemmConfig<BDataType>::M_Tile;
-    constexpr ck_tile::index_t N_Tile = GemmConfig<BDataType>::N_Tile;
-    constexpr ck_tile::index_t K_Tile = GemmConfig<BDataType>::K_Tile;
+    constexpr ck_tile::index_t M_Tile = GemmConfig<BDataType, GemmCfgVer>::M_Tile;
+    constexpr ck_tile::index_t N_Tile = GemmConfig<BDataType, GemmCfgVer>::N_Tile;
+    constexpr ck_tile::index_t K_Tile = GemmConfig<BDataType, GemmCfgVer>::K_Tile;
 
-    constexpr ck_tile::index_t M_Warp = GemmConfig<BDataType>::M_Warp;
-    constexpr ck_tile::index_t N_Warp = GemmConfig<BDataType>::N_Warp;
-    constexpr ck_tile::index_t K_Warp = GemmConfig<BDataType>::K_Warp;
+    constexpr ck_tile::index_t M_Warp = GemmConfig<BDataType, GemmCfgVer>::M_Warp;
+    constexpr ck_tile::index_t N_Warp = GemmConfig<BDataType, GemmCfgVer>::N_Warp;
+    constexpr ck_tile::index_t K_Warp = GemmConfig<BDataType, GemmCfgVer>::K_Warp;
 
-    constexpr ck_tile::index_t M_Warp_Tile = GemmConfig<BDataType>::M_Warp_Tile;
-    constexpr ck_tile::index_t N_Warp_Tile = GemmConfig<BDataType>::N_Warp_Tile;
-    constexpr ck_tile::index_t K_Warp_Tile = GemmConfig<BDataType>::K_Warp_Tile;
+    constexpr ck_tile::index_t M_Warp_Tile = GemmConfig<BDataType, GemmCfgVer>::M_Warp_Tile;
+    constexpr ck_tile::index_t N_Warp_Tile = GemmConfig<BDataType, GemmCfgVer>::N_Warp_Tile;
+    constexpr ck_tile::index_t K_Warp_Tile = GemmConfig<BDataType, GemmCfgVer>::K_Warp_Tile;
 
     using CodegenFlatmmShape =
         ck_tile::TileFlatmmShape<ck_tile::sequence<M_Tile, N_Tile, K_Tile>,
@@ -109,15 +110,15 @@ float flatmm_calc(const ck_tile::FlatmmHostArgs& args, const ck_tile::stream_con
         return ave_time;
     };
 
-    if(args.k_batch == 1)
+    //if(args.k_batch == 1)
     {
         return Run(ck_tile::integral_constant<ck_tile::memory_operation_enum,
                                               ck_tile::memory_operation_enum::set>{});
     }
-    else
+    //else
     {
-        return Run(ck_tile::integral_constant<ck_tile::memory_operation_enum,
-                                              ck_tile::memory_operation_enum::atomic_add>{});
+        //return Run(ck_tile::integral_constant<ck_tile::memory_operation_enum,
+        //                                      ck_tile::memory_operation_enum::atomic_add>{});
     }
 }
 
