@@ -7,6 +7,8 @@
 #include "ck_tile/host/concat.hpp"
 #include "ck_tile/ops/flatmm/pipeline/flatmm_pipeline_agmem_bgmem_creg_v1_policy.hpp"
 
+template<typename X> struct Debug;
+
 namespace ck_tile {
 
 template <typename Problem, typename PipelinePolicy = UniversalFlatmmPipelineAgBgCrPolicy>
@@ -74,22 +76,26 @@ struct FlatmmPipelineAGmemBGmemCRegV1
     }
 
     CK_TILE_HOST_DEVICE static constexpr auto HotLoopScheduler()
-    {
+    { 
+               #if 0
         constexpr auto config = BlockFlatmm::BlockPolicy::template GetWarpGemmMWarpNWarp<Problem>();
 
         using WG = remove_cvref_t<decltype(config.template at<0>())>;
 
-        constexpr index_t MWarp = config.template at<1>();
-        constexpr index_t NWarp = config.template at<2>();
+        constexpr index_t MWarp = config.template at<1>(); // 1
+        constexpr index_t NWarp = config.template at<2>(); // 4
 
-        constexpr index_t KIterPerWarp = kKPerBlock / WG::kK;
-        constexpr index_t MIterPerWarp = kMPerBlock / (MWarp * WG::kM);
-        constexpr index_t NIterPerWarp = kNPerBlock / (NWarp * WG::kN);
+        constexpr index_t KIterPerWarp = kKPerBlock / WG::kK; // 128 / 64 = 2
+        constexpr index_t MIterPerWarp = kMPerBlock / (MWarp * WG::kM); // 128 / 1 /32 = 4
+        constexpr index_t NIterPerWarp = kNPerBlock / (NWarp * WG::kN); // 256 / 4 / 32 = 2
 
-        constexpr index_t KPerLoad               = Problem::VectorLoadSize / sizeof(ADataType);
-        constexpr index_t A_Buffer_Load_Inst_Num = kMPerBlock * kKPerBlock / BlockSize / KPerLoad;
-        constexpr index_t A_LDS_Read_Inst_Num    = MIterPerWarp * KIterPerWarp;
-        constexpr index_t B_Buffer_Load_Inst_Num = NIterPerWarp * KIterPerWarp;
+        constexpr index_t KPerLoad               = Problem::VectorLoadSize / sizeof(ADataType); // 16
+        constexpr index_t A_Buffer_Load_Inst_Num = kMPerBlock * kKPerBlock / BlockSize / KPerLoad; // 128 * 128 / 256 / 16 = 4
+        constexpr index_t A_LDS_Read_Inst_Num    = MIterPerWarp * KIterPerWarp; // 2 * 4 = 8
+        constexpr index_t B_Buffer_Load_Inst_Num = NIterPerWarp * KIterPerWarp; // 2 * 2 = 4
+
+        Debug<WG> xx0;
+        Debug<sequence<MWarp, NWarp, kKPerBlock, KIterPerWarp, MIterPerWarp, NIterPerWarp, KPerLoad, A_Buffer_Load_Inst_Num, A_LDS_Read_Inst_Num, B_Buffer_Load_Inst_Num>> xx1;
         // constexpr index_t A_LDS_Read_Inst_Remain = A_LDS_Read_Inst_Num - A_Buffer_Load_Inst_Num;
 #if defined(USING_MFMA_16x16x32) && defined(ENABLE_FP8)
         static_for<0, A_Buffer_Load_Inst_Num, 1>{}([&](auto i) {
@@ -147,6 +153,8 @@ struct FlatmmPipelineAGmemBGmemCRegV1
             __builtin_amdgcn_sched_group_barrier(0x008, 3, 0); // MFMA
         });
         __builtin_amdgcn_sched_group_barrier(0x008, 4, 0); // MFMA
+#endif
+
 #endif
     }
 

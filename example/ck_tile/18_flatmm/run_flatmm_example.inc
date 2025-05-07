@@ -293,6 +293,7 @@ int run_flatmm_example(int argc, char* argv[])
 
     if(a_layout == "R" && b_layout == "C")
     {
+        #if 0
         if(data_type == "fp16")
         {
             using Types       = GemmBasicTypeConfig<ck_tile::half_t>;
@@ -323,7 +324,9 @@ int run_flatmm_example(int argc, char* argv[])
                                                    Col,
                                                    Row>(argc, argv, Row{}, Col{}, Row{});
         }
-        else if(data_type == "fp8")
+        else 
+        #endif
+        if(data_type == "fp8")
         {
             using Types       = GemmBasicTypeConfig<ck_tile::fp8_t>;
             using ADataType   = Types::ADataType;

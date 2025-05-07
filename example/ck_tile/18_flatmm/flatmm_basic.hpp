@@ -52,7 +52,7 @@ struct GemmConfig
     static constexpr ck_tile::index_t K_Tile = sizeof(DataType) == 2 ? 64 : 128;
 
     static constexpr ck_tile::index_t M_Warp = 1;
-    static constexpr ck_tile::index_t N_Warp = 8;
+    static constexpr ck_tile::index_t N_Warp = 4;
     static constexpr ck_tile::index_t K_Warp = 1;
 
     static constexpr ck_tile::index_t M_Warp_Tile = 32;
