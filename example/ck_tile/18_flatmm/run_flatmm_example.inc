@@ -148,6 +148,7 @@ int run_flatmm_example_with_layouts(int argc,
     ck_tile::index_t kbatch = arg_parser.get_int("split_k");
     int n_warmup            = arg_parser.get_int("warmup");
     int n_repeat            = arg_parser.get_int("repeat");
+    ck_tile::index_t init_method = arg_parser.get_int("init");
 
     stride_A = ck_tile::get_default_stride(M, K, stride_A, is_row_major(a_layout));
     stride_B = ck_tile::get_default_stride(K, N, stride_B, is_row_major(b_layout));
@@ -161,8 +162,26 @@ int run_flatmm_example_with_layouts(int argc,
         ck_tile::host_tensor_descriptor(M, N, stride_C, is_row_major(CLayout{})));
 
     // TODO: add different init types
-    ck_tile::FillUniformDistribution<ADataType>{-.5f, .5f}(a_host);
-    ck_tile::FillUniformDistribution<BDataType>{-.5f, .5f}(b_origin_host);
+    if(init_method == 0)
+    {
+        ck_tile::FillUniformDistribution<ADataType>{-.5f, .5f}(a_host);
+        ck_tile::FillUniformDistribution<BDataType>{-.5f, .5f}(b_origin_host);
+    }
+    else if(init_method == 1)
+    {
+        ck_tile::FillMonotonicSeq<ADataType>{}(a_host);
+        ck_tile::FillMonotonicSeq<BDataType>{}(b_origin_host);
+    }
+    else if(init_method == 2)
+    {
+        ck_tile::FillUniformDistribution<ADataType>{1.f, 1.f}(a_host);
+        ck_tile::FillUniformDistribution<BDataType>{1.f, 1.f}(b_origin_host);
+    }
+    else
+    {
+        a_host.SetZero();
+        b_origin_host.SetZero();
+    }
 
     ck_tile::DeviceMem a_dev_buf(a_host.get_element_space_size_in_bytes());
     ck_tile::DeviceMem c_dev_buf(c_rslt_host.get_element_space_size_in_bytes());
