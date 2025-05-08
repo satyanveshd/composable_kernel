@@ -159,6 +159,8 @@ struct GemmConfig<ck_tile::fp8_t, 7>
     static constexpr ck_tile::index_t K_Warp_Tile = 128;
 };
 
+constexpr ck_tile::index_t GemmConfigNumVer = 8;
+
 template <typename DataType>
 struct GemmBasicTypeConfig;
 
