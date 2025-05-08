@@ -36,7 +36,7 @@ struct GemmConfig
 {
     static constexpr ck_tile::index_t M_Tile = 128;
     static constexpr ck_tile::index_t N_Tile = 128;
-    static constexpr ck_tile::index_t K_Tile = sizeof(DataType) == 2 ? 64 : 128;
+    static constexpr ck_tile::index_t K_Tile = 128 / sizeof(DataType);
 
     static constexpr ck_tile::index_t M_Warp = 1;
     static constexpr ck_tile::index_t N_Warp = 4;
@@ -47,12 +47,12 @@ struct GemmConfig
     static constexpr ck_tile::index_t K_Warp_Tile = sizeof(DataType) == 2 ? 16 : 64;
 };
 
-template <>
-struct GemmConfig<ck_tile::fp8_t, 1>
+template <typename DataType>
+struct GemmConfig<DataType, 1>
 {
     static constexpr ck_tile::index_t M_Tile = 128;
     static constexpr ck_tile::index_t N_Tile = 128;
-    static constexpr ck_tile::index_t K_Tile = 256;
+    static constexpr ck_tile::index_t K_Tile = 256 / sizeof(DataType);
 
     static constexpr ck_tile::index_t M_Warp = 1;
     static constexpr ck_tile::index_t N_Warp = 4;
@@ -60,15 +60,15 @@ struct GemmConfig<ck_tile::fp8_t, 1>
 
     static constexpr ck_tile::index_t M_Warp_Tile = 32;
     static constexpr ck_tile::index_t N_Warp_Tile = 32;
-    static constexpr ck_tile::index_t K_Warp_Tile = 64;
+    static constexpr ck_tile::index_t K_Warp_Tile = sizeof(DataType) == 2 ? 16 : 64;
 };
 
-template <>
-struct GemmConfig<ck_tile::fp8_t, 2>
+template <typename DataType>
+struct GemmConfig<DataType, 2>
 {
     static constexpr ck_tile::index_t M_Tile = 256;
     static constexpr ck_tile::index_t N_Tile = 128;
-    static constexpr ck_tile::index_t K_Tile = 128;
+    static constexpr ck_tile::index_t K_Tile = 128 / sizeof(DataType);
 
     static constexpr ck_tile::index_t M_Warp = 1;
     static constexpr ck_tile::index_t N_Warp = 4;
@@ -76,15 +76,15 @@ struct GemmConfig<ck_tile::fp8_t, 2>
 
     static constexpr ck_tile::index_t M_Warp_Tile = 32;
     static constexpr ck_tile::index_t N_Warp_Tile = 32;
-    static constexpr ck_tile::index_t K_Warp_Tile = 64;
+    static constexpr ck_tile::index_t K_Warp_Tile = sizeof(DataType) == 2 ? 16 : 64;
 };
 
-template <>
-struct GemmConfig<ck_tile::fp8_t, 3>
+template <typename DataType>
+struct GemmConfig<DataType, 3>
 {
     static constexpr ck_tile::index_t M_Tile = 256;
     static constexpr ck_tile::index_t N_Tile = 128;
-    static constexpr ck_tile::index_t K_Tile = 256;
+    static constexpr ck_tile::index_t K_Tile = 256 / sizeof(DataType);
 
     static constexpr ck_tile::index_t M_Warp = 1;
     static constexpr ck_tile::index_t N_Warp = 4;
@@ -92,15 +92,15 @@ struct GemmConfig<ck_tile::fp8_t, 3>
 
     static constexpr ck_tile::index_t M_Warp_Tile = 32;
     static constexpr ck_tile::index_t N_Warp_Tile = 32;
-    static constexpr ck_tile::index_t K_Warp_Tile = 64;
+    static constexpr ck_tile::index_t K_Warp_Tile = sizeof(DataType) == 2 ? 16 : 64;
 };
 
-template <>
-struct GemmConfig<ck_tile::fp8_t, 4>
+template <typename DataType>
+struct GemmConfig<DataType, 4>
 {
     static constexpr ck_tile::index_t M_Tile = 256;
     static constexpr ck_tile::index_t N_Tile = 256;
-    static constexpr ck_tile::index_t K_Tile = 256;
+    static constexpr ck_tile::index_t K_Tile = 256 / sizeof(DataType);
 
     static constexpr ck_tile::index_t M_Warp = 1;
     static constexpr ck_tile::index_t N_Warp = 8;
@@ -108,15 +108,15 @@ struct GemmConfig<ck_tile::fp8_t, 4>
 
     static constexpr ck_tile::index_t M_Warp_Tile = 32;
     static constexpr ck_tile::index_t N_Warp_Tile = 32;
-    static constexpr ck_tile::index_t K_Warp_Tile = 64;
+    static constexpr ck_tile::index_t K_Warp_Tile = sizeof(DataType) == 2 ? 16 : 64;
 };
 
-template <>
-struct GemmConfig<ck_tile::fp8_t, 5>
+template <typename DataType>
+struct GemmConfig<DataType, 5>
 {
     static constexpr ck_tile::index_t M_Tile = 256;
     static constexpr ck_tile::index_t N_Tile = 256;
-    static constexpr ck_tile::index_t K_Tile = 128;
+    static constexpr ck_tile::index_t K_Tile = 128 / sizeof(DataType);
 
     static constexpr ck_tile::index_t M_Warp = 1;
     static constexpr ck_tile::index_t N_Warp = 8;
@@ -124,15 +124,15 @@ struct GemmConfig<ck_tile::fp8_t, 5>
 
     static constexpr ck_tile::index_t M_Warp_Tile = 32;
     static constexpr ck_tile::index_t N_Warp_Tile = 32;
-    static constexpr ck_tile::index_t K_Warp_Tile = 64;
+    static constexpr ck_tile::index_t K_Warp_Tile = sizeof(DataType) == 2 ? 16 : 64;
 };
 
-template <>
-struct GemmConfig<ck_tile::fp8_t, 6>
+template <typename DataType>
+struct GemmConfig<DataType, 6>
 {
     static constexpr ck_tile::index_t M_Tile = 128;
     static constexpr ck_tile::index_t N_Tile = 256;
-    static constexpr ck_tile::index_t K_Tile = 128;
+    static constexpr ck_tile::index_t K_Tile = 128 / sizeof(DataType);
 
     static constexpr ck_tile::index_t M_Warp = 1;
     static constexpr ck_tile::index_t N_Warp = 8;
@@ -140,15 +140,15 @@ struct GemmConfig<ck_tile::fp8_t, 6>
 
     static constexpr ck_tile::index_t M_Warp_Tile = 32;
     static constexpr ck_tile::index_t N_Warp_Tile = 32;
-    static constexpr ck_tile::index_t K_Warp_Tile = 64;
+    static constexpr ck_tile::index_t K_Warp_Tile = sizeof(DataType) == 2 ? 16 : 64;
 };
 
-template <>
-struct GemmConfig<ck_tile::fp8_t, 7>
+template <typename DataType>
+struct GemmConfig<DataType, 7>
 {
     static constexpr ck_tile::index_t M_Tile = 128;
     static constexpr ck_tile::index_t N_Tile = 128;
-    static constexpr ck_tile::index_t K_Tile = 128;
+    static constexpr ck_tile::index_t K_Tile = 128 / sizeof(DataType);
 
     static constexpr ck_tile::index_t M_Warp = 1;
     static constexpr ck_tile::index_t N_Warp = 4;
@@ -156,7 +156,7 @@ struct GemmConfig<ck_tile::fp8_t, 7>
 
     static constexpr ck_tile::index_t M_Warp_Tile = 16;
     static constexpr ck_tile::index_t N_Warp_Tile = 16;
-    static constexpr ck_tile::index_t K_Warp_Tile = 128;
+    static constexpr ck_tile::index_t K_Warp_Tile = sizeof(DataType) == 2 ? 32 : 128;
 };
 
 constexpr ck_tile::index_t GemmConfigNumVer = 8;

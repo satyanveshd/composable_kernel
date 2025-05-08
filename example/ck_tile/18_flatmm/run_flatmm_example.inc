@@ -319,90 +319,86 @@ int run_flatmm_example(int argc, char* argv[])
 
     if(a_layout == "R" && b_layout == "C")
     {
-#if 0
-        if(data_type == "fp16")
+        if(cfg_ver >= GemmConfigNumVer)
         {
-            using Types       = GemmBasicTypeConfig<ck_tile::half_t>;
-            using ADataType   = Types::ADataType;
-            using BDataType   = Types::BDataType;
-            using AccDataType = Types::AccDataType;
-            using CDataType   = Types::CDataType;
-            return run_flatmm_example_with_layouts<ADataType,
-                                                   BDataType,
-                                                   AccDataType,
-                                                   CDataType,
-                                                   Row,
-                                                   Col,
-                                                   Row>(argc, argv, Row{}, Col{}, Row{});
+            throw std::runtime_error("Unsupported config version for this operation !!!");
         }
-        else if(data_type == "bf16")
-        {
-            using Types       = GemmBasicTypeConfig<ck_tile::bf16_t>;
-            using ADataType   = Types::ADataType;
-            using BDataType   = Types::BDataType;
-            using AccDataType = Types::AccDataType;
-            using CDataType   = Types::CDataType;
-            return run_flatmm_example_with_layouts<ADataType,
-                                                   BDataType,
-                                                   AccDataType,
-                                                   CDataType,
-                                                   Row,
-                                                   Col,
-                                                   Row>(argc, argv, Row{}, Col{}, Row{});
-        }
-        else
-#endif
-        if(data_type == "fp8")
-        {
-            if(cfg_ver < GemmConfigNumVer)
+        int ret = 0;
+        ck_tile::static_for<0, GemmConfigNumVer, 1>{}([&](auto ver) {
+            if(cfg_ver == ver)
             {
-                int ret = 0;
-                ck_tile::static_for<0, GemmConfigNumVer, 1>{}([&](auto ver) {
-                    if(cfg_ver == ver)
-                    {
-                        using Types       = GemmBasicTypeConfig<ck_tile::fp8_t>;
-                        using ADataType   = Types::ADataType;
-                        using BDataType   = Types::BDataType;
-                        using AccDataType = Types::AccDataType;
-                        using CDataType   = Types::CDataType;
-                        ret               = run_flatmm_example_with_layouts<ADataType,
-                                                                            BDataType,
-                                                                            AccDataType,
-                                                                            CDataType,
-                                                                            0,
-                                                                            Row,
-                                                                            Col,
-                                                                            Row>(argc, argv, Row{}, Col{}, Row{});
-                    }
-                });
-                return ret;
+                if(data_type == "fp16")
+                {
+                    using Types       = GemmBasicTypeConfig<ck_tile::half_t>;
+                    using ADataType   = Types::ADataType;
+                    using BDataType   = Types::BDataType;
+                    using AccDataType = Types::AccDataType;
+                    using CDataType   = Types::CDataType;
+                    ret               = run_flatmm_example_with_layouts<ADataType,
+                                                                        BDataType,
+                                                                        AccDataType,
+                                                                        CDataType,
+                                                                        ver,
+                                                                        Row,
+                                                                        Col,
+                                                                        Row>(argc, argv, Row{}, Col{}, Row{});
+                }
+                else if(data_type == "bf16")
+                {
+                    using Types       = GemmBasicTypeConfig<ck_tile::bf16_t>;
+                    using ADataType   = Types::ADataType;
+                    using BDataType   = Types::BDataType;
+                    using AccDataType = Types::AccDataType;
+                    using CDataType   = Types::CDataType;
+                    ret               = run_flatmm_example_with_layouts<ADataType,
+                                                                        BDataType,
+                                                                        AccDataType,
+                                                                        CDataType,
+                                                                        ver,
+                                                                        Row,
+                                                                        Col,
+                                                                        Row>(argc, argv, Row{}, Col{}, Row{});
+                }
+                else if(data_type == "fp8")
+                {
+
+                    using Types       = GemmBasicTypeConfig<ck_tile::fp8_t>;
+                    using ADataType   = Types::ADataType;
+                    using BDataType   = Types::BDataType;
+                    using AccDataType = Types::AccDataType;
+                    using CDataType   = Types::CDataType;
+                    ret               = run_flatmm_example_with_layouts<ADataType,
+                                                                        BDataType,
+                                                                        AccDataType,
+                                                                        CDataType,
+                                                                        ver,
+                                                                        Row,
+                                                                        Col,
+                                                                        Row>(argc, argv, Row{}, Col{}, Row{});
+                }
+                else if(data_type == "bf8")
+                {
+                    using Types       = GemmBasicTypeConfig<ck_tile::bf8_t>;
+                    using ADataType   = Types::ADataType;
+                    using BDataType   = Types::BDataType;
+                    using AccDataType = Types::AccDataType;
+                    using CDataType   = Types::CDataType;
+                    ret               = run_flatmm_example_with_layouts<ADataType,
+                                                                        BDataType,
+                                                                        AccDataType,
+                                                                        CDataType,
+                                                                        ver,
+                                                                        Row,
+                                                                        Col,
+                                                                        Row>(argc, argv, Row{}, Col{}, Row{});
+                }
+                else
+                {
+                    throw std::runtime_error("Unsupported data type for this operation !!!");
+                }
             }
-            else
-            {
-                throw std::runtime_error("Unsupported config version for this operation !!!");
-            }
-        }
-#if 0
-        else if(data_type == "bf8")
-        {
-            using Types       = GemmBasicTypeConfig<ck_tile::bf8_t>;
-            using ADataType   = Types::ADataType;
-            using BDataType   = Types::BDataType;
-            using AccDataType = Types::AccDataType;
-            using CDataType   = Types::CDataType;
-            return run_flatmm_example_with_layouts<ADataType,
-                                                   BDataType,
-                                                   AccDataType,
-                                                   CDataType,
-                                                   Row,
-                                                   Col,
-                                                   Row>(argc, argv, Row{}, Col{}, Row{});
-        }
-#endif
-        else
-        {
-            throw std::runtime_error("Unsupported data type for this operation !!!");
-        }
+        });
+        return ret;
     }
     else
     {
