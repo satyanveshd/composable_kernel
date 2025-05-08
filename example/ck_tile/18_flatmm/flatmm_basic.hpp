@@ -143,6 +143,21 @@ struct GemmConfig<ck_tile::fp8_t, 6>
     static constexpr ck_tile::index_t K_Warp_Tile = 64;
 };
 
+template <>
+struct GemmConfig<ck_tile::fp8_t, 7>
+{
+    static constexpr ck_tile::index_t M_Tile = 128;
+    static constexpr ck_tile::index_t N_Tile = 128;
+    static constexpr ck_tile::index_t K_Tile = 128;
+
+    static constexpr ck_tile::index_t M_Warp = 1;
+    static constexpr ck_tile::index_t N_Warp = 4;
+    static constexpr ck_tile::index_t K_Warp = 1;
+
+    static constexpr ck_tile::index_t M_Warp_Tile = 16;
+    static constexpr ck_tile::index_t N_Warp_Tile = 16;
+    static constexpr ck_tile::index_t K_Warp_Tile = 128;
+};
 
 template <typename DataType>
 struct GemmBasicTypeConfig;
