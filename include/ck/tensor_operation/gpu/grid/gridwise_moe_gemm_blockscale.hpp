@@ -1196,7 +1196,7 @@ struct GridwiseMoeGemmBlockScale
                                                              : problem.NumTokens * problem.TopK,
                                                  ScaleBlockM),
                        math::integer_divide_ceil(problem.K, ScaleBlockK)),
-            make_tuple(math::integer_divide_ceil(problem.K, ScaleBlockK), 1));
+            make_tuple(1, math::integer_divide_ceil(problem.M, ScaleBlockM)));
         const auto b_scale_grid_desc_bn_ak = make_naive_tensor_descriptor(
             make_tuple(math::integer_divide_ceil(problem.N, ScaleBlockN),
                        math::integer_divide_ceil(problem.K, ScaleBlockK)),
@@ -1390,7 +1390,7 @@ struct GridwiseMoeGemmBlockScale
                 token_offset = token_offset * problem.TopK + (fused_token >> 24);
             }
             scale_gather_offsets(m0) =
-                token_offset * math::integer_divide_ceil(problem.K, ScaleBlockK);
+                token_offset;// * math::integer_divide_ceil(problem.K, ScaleBlockK);
         });
 
         // printf("blkid: %d, tid:%d, a_thread_offset: %d, scale_gather_offsets: %d\n", block_m_id,
@@ -1403,9 +1403,9 @@ struct GridwiseMoeGemmBlockScale
                                                     decltype(a_scale_grid_desc_am_ak),
                                                     decltype(a_scale_thread_desc),
                                                     Sequence<1, ScaleSliceSizeK>,
-                                                    Sequence<0, 1>,
+                                                    Sequence<1, 0>,
+                                                    0,
                                                     1,
-                                                    ScaleSliceSizeK,
                                                     1,
                                                     false,
                                                     MXdlPerWave>(
@@ -1806,7 +1806,7 @@ struct GridwiseMoeGemmBlockScale
                                                              : problem.NumTokens * problem.TopK,
                                                  ScaleBlockM),
                        math::integer_divide_ceil(problem.K, ScaleBlockK)),
-            make_tuple(math::integer_divide_ceil(problem.K, ScaleBlockK), 1));
+            make_tuple(1, math::integer_divide_ceil(problem.M, ScaleBlockM)));
         const auto b_scale_grid_desc_bn_ak = make_naive_tensor_descriptor(
             make_tuple(math::integer_divide_ceil(problem.N, ScaleBlockN),
                        math::integer_divide_ceil(problem.K, ScaleBlockK)),
@@ -2007,7 +2007,7 @@ struct GridwiseMoeGemmBlockScale
                 token_offset = token_offset * problem.TopK + (fused_token >> 24);
             }
             scale_gather_offsets(m0) =
-                token_offset * math::integer_divide_ceil(problem.K, ScaleBlockK);
+                token_offset; //* math::integer_divide_ceil(problem.K, ScaleBlockK);
         });
 
         // printf("blkid: %d, tid:%d, a_thread_offset: %d, scale_gather_offsets: %d\n", block_m_id,
@@ -2020,13 +2020,26 @@ struct GridwiseMoeGemmBlockScale
                                                     decltype(a_scale_grid_desc_am_ak),
                                                     decltype(a_scale_thread_desc),
                                                     Sequence<1, ScaleSliceSizeK>,
-                                                    Sequence<0, 1>,
+                                                    Sequence<1, 0>,
+                                                    0,
                                                     1,
-                                                    ScaleSliceSizeK,
                                                     1,
                                                     false,
                                                     MXdlPerWave>(
                 a_scale_grid_desc_am_ak, make_multi_index(0, 0), scale_gather_offsets);
+        // auto a_scale_thread_copy =
+        //     ThreadwiseTensorSliceTransfer_v2<AScaleType,
+        //                                      AScaleType,
+        //                                      decltype(a_scale_grid_desc_am_ak),
+        //                                      decltype(a_scale_thread_desc),
+        //                                      Sequence<1, ScaleSliceSizeK>,
+        //                                      Sequence<1, 0>,
+        //                                      0,
+        //                                      1,
+        //                                      1,
+        //                                      false>(
+        //         a_scale_grid_desc_am_ak,
+                // make_multi_index(block_m_id * MPerBlock / ScaleBlockM + scale_gather_offsets, 0));
 
         auto b_scale_thread_copy =
             ThreadwiseTensorSliceTransfer_v2<BScaleType,

@@ -531,7 +531,6 @@ struct DeviceMoeGemmBlockScale
                     throw std::runtime_error("todo: only v1 & v2 support now");
                 }
             }
-#if 1
             else
             {
                 // Tail number always 1
@@ -583,7 +582,6 @@ struct DeviceMoeGemmBlockScale
                     }
                 }
             }
-#endif
 #endif
 
             return ave_time;

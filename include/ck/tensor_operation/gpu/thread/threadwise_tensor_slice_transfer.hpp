@@ -546,7 +546,7 @@ struct ThreadwiseTensorSliceTransfer_v2_gather
                     src_buf.template Get<src_vector_t>(src_coord_.GetOffset() / PackedSize +
                                                            scale_gather_offsets_(gather_idx),
                                                        is_src_valid);
-
+                printf("Tid: %d, Gather_idx: %d, coord offset: %d, gather offset: %d, total offset: %d.\n", get_thread_local_1d_id(), gather_idx.value ,src_coord_.GetOffset() / PackedSize , scale_gather_offsets_(gather_idx), src_coord_.GetOffset() / PackedSize + scale_gather_offsets_(gather_idx));
                 // copy data from src_vector into dst_buf
                 static_for<0, SrcScalarPerVector / PackedSize, 1>{}([&](auto i) {
                     constexpr index_t dst_offset =

@@ -121,10 +121,10 @@ static constexpr ck::index_t Scale_Block_K = 128;
 #if 0
 static constexpr ck::index_t MPerBlock = 32;
 static constexpr ck::index_t BLOCKSIZE = 256;
-static constexpr ck::index_t MXDLPerWave = 1;
-static constexpr ck::index_t NXDLPerWave = 1;
+static constexpr ck::index_t MXDLPerWave = 2;
+static constexpr ck::index_t NXDLPerWave = 2;
 static constexpr ck::index_t NPerBlock   = 128;
-static constexpr ck::index_t MNPerXDL    = 32;
+static constexpr ck::index_t MNPerXDL    = 16;
 static constexpr ck::index_t KPerBlock   = 256 / sizeof(A0DataType);
 
 static constexpr ck::index_t CShuffleNLane = 32;
@@ -153,6 +153,19 @@ using DeviceOpInstance = ck::tensor_operation::device::DeviceMoeGemmBlockScale<
                ck::BlockGemmPipelineScheduler::Intrawave, ck::BlockGemmPipelineVersion::v1, false, false, A0DataType>;
 
 #else
+// static constexpr ck::index_t MPerBlock = 128; using DeviceOpInstance = ck::tensor_operation::device::DeviceMoeGemmBlockScale<
+//                Row, Col, DsLayout, ELayout,
+//                A0DataType, A1DataType, B0DataType, B1DataType, DsDataType, EDataType, AccDataType, CShuffleDataType,
+//                AElementOp,  BElementOp, CDEElementOp,   GemmSpec,   
+//                256,  Scale_Block_M, Scale_Block_N, Scale_Block_K,
+//                MPerBlock,   128,    128,
+//                16,   16,
+//                32,   32,
+//                2,    2,
+//                S<8, 32, 1>, S<1, 0, 2>, S<1, 0, 2>, 2, 16, 16, 0,
+//                S<8, 32, 1>, S<1, 0, 2>, S<1, 0, 2>, 2, 16, 16, 0,
+//                1,    1,   S<1, 32, 1, 8>, S<2, 1, 1, 1>,
+//                ck::BlockGemmPipelineScheduler::Intrawave, ck::BlockGemmPipelineVersion::v1, false, false, A0DataType>;
 static constexpr ck::index_t MPerBlock = 128; using DeviceOpInstance = ck::tensor_operation::device::DeviceMoeGemmBlockScale<
                Row, Col, DsLayout, ELayout,
                A0DataType, A1DataType, B0DataType, B1DataType, DsDataType, EDataType, AccDataType, CShuffleDataType,
@@ -160,12 +173,12 @@ static constexpr ck::index_t MPerBlock = 128; using DeviceOpInstance = ck::tenso
                256,  Scale_Block_M, Scale_Block_N, Scale_Block_K,
                MPerBlock,   128,    128,
                16,   16,
-               32,   32,
-               2,    2,
+               16,   16,
+               8,    2,
                S<8, 32, 1>, S<1, 0, 2>, S<1, 0, 2>, 2, 16, 16, 0,
                S<8, 32, 1>, S<1, 0, 2>, S<1, 0, 2>, 2, 16, 16, 0,
-               1,    1,   S<1, 32, 1, 8>, S<2, 1, 1, 1>,
-               ck::BlockGemmPipelineScheduler::Intrawave, ck::BlockGemmPipelineVersion::v1, false, false, A0DataType>;
+               2,    2,   S<1, 32, 1, 8>, S<8, 1, 1, 1>,
+               ck::BlockGemmPipelineScheduler::Intrawave, ck::BlockGemmPipelineVersion::v3, false, false, A0DataType>;
 #endif
 // clang-format on
 
@@ -180,7 +193,7 @@ int main(int argc, char* argv[])
     // experts = 8
     // per expert:
 
-    constexpr ck::index_t valid_tile_num  = 13; //13 for 128; 52 for 32; 4096 for ds  // > token * topk / MPerBlock
+    constexpr ck::index_t valid_tile_num  = 1; //13 for 128; 52 for 32; 4096 for ds  // > token * topk / MPerBlock
     constexpr ck::index_t sorted_tile_num = valid_tile_num;// + 3;
     ck::index_t sorted_size     = sorted_tile_num * MPerBlock;
     ck::index_t valid_size      = valid_tile_num * MPerBlock;
@@ -188,9 +201,9 @@ int main(int argc, char* argv[])
     // GEMM shape
     ck::index_t N               = 6144;
     ck::index_t K               = 4096;
-    ck::index_t experts         = 8;
+    ck::index_t experts         = 1;
     ck::index_t tokens          = 1;
-    ck::index_t topk            = 2;
+    ck::index_t topk            = 1;
 #else
     //deepseek
     ck::index_t N               = 2048;
@@ -234,7 +247,7 @@ int main(int argc, char* argv[])
     ck::index_t StrideE              = N;
     constexpr ck::index_t NumDTensor = DsDataType::Size();
     constexpr auto StrideDs          = std::array<ck::index_t, NumDTensor>{0};
-    ck::index_t Scale_Stride_AM      = (K + Scale_Block_K - 1) / Scale_Block_K;
+    // ck::index_t Scale_Stride_AK      = (tokens + Scale_Block_M - 1) / Scale_Block_M;
     ck::index_t Scale_Stride_BN      = (K + Scale_Block_K - 1) / Scale_Block_K;
     ck::index_t Scale_Stride_B       = (N + Scale_Block_N - 1) / Scale_Block_N;
 
@@ -248,24 +261,27 @@ int main(int argc, char* argv[])
     // int eids[]         = {0, 1, 3, 3, 3};
     //  int eids[]         = {0, 1, 2, 3, 4, 5, 6, 7}; //, 3, 3, 3}; // {2, 1, 1, 2, 2, 2, 1, 2}
     //int eids[] = {0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 3, 3, 3};
-    int eids[sorted_tile_num]{};
-    int e_select = 0;
-    for(int i = 0; i < sorted_tile_num; i++)
-    {
-        if (i < valid_tile_num){
-            eids[i] = e_select;
-            //std::rand() % experts;
-        }
-        else{
-            eids[i] = 3;
-        }
-        if (i > ((e_select + 1) * (sorted_tile_num / experts))){
-            e_select++;
-            if (e_select >= experts){
-                e_select = experts - 1;
-            }
-        }
-    }
+     int eids[]         = {0, 0, 0, 0, 0,
+                        0, 0, 0, 0, 0,
+                        0, 0, 0};
+    // int eids[sorted_tile_num]{};
+    // int e_select = 0;
+    // for(int i = 0; i < sorted_tile_num; i++)
+    // {
+    //     if (i < valid_tile_num){
+    //         eids[i] = e_select;
+    //         //std::rand() % experts;
+    //     }
+    //     else{
+    //         eids[i] = 3;
+    //     }
+    //     if (i > ((e_select + 1) * (sorted_tile_num / experts))){
+    //         e_select++;
+    //         if (e_select >= experts){
+    //             e_select = experts - 1;
+    //         }
+    //     }
+    // }
 
     // int eids[]         = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
     //                     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
@@ -304,7 +320,7 @@ int main(int argc, char* argv[])
     Tensor<A0DataType> a0_t_k_k(HostTensorDescriptor({tokens, topk, K}, {topk * K, K, 1}));
     Tensor<A1DataType> a1_t_k_k(
         HostTensorDescriptor({tokens, topk, (K + Scale_Block_K - 1) / Scale_Block_K},
-                             {(topk * Scale_Stride_AM), Scale_Stride_AM, 1}));
+                             {topk, 1, topk * tokens}));
 
     Tensor<B0DataType> b0_e_n_k(HostTensorDescriptor({experts, K, N}, {N * K, 1, K}));
     Tensor<B1DataType> b1_e_n_k(HostTensorDescriptor(
