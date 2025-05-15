@@ -341,7 +341,7 @@ struct ThreadwiseTensorSliceTransfer_v2
                 }
                 else
                 {
-                    CK_PRINT<decltype(dst_buf), decltype(src_vector), DstData, SrcData>();
+                    // CK_PRINT<decltype(dst_buf), decltype(src_vector), DstData, SrcData>();
                     dst_buf(Number<dst_offset / 4>{}) =
                         type_convert<int32_t>(src_vector.template AsType<int32_t>()[i]);
                 }
