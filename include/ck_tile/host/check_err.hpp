@@ -30,7 +30,7 @@ double get_relative_threshold(const int number_of_accumulations = 1)
     using I32  = int32_t;
 
     static_assert(
-        is_any_of<ComputeDataType, F8, BF8, F16, BF16, F32, pk_int4_t, I8, I32, int>::value,
+        is_any_of<ComputeDataType, F8, BF8, F16, BF16, F32, pk_int4_t, pk_fp4_t, I8, I32, int>::value,
         "Warning: Unhandled ComputeDataType for setting up the relative threshold!");
 
     double compute_error = 0;
@@ -43,7 +43,7 @@ double get_relative_threshold(const int number_of_accumulations = 1)
         compute_error = std::pow(2, -numeric_traits<ComputeDataType>::mant) * 0.5;
     }
 
-    static_assert(is_any_of<OutDataType, F8, BF8, F16, BF16, F32, pk_int4_t, I8, I32, int>::value,
+    static_assert(is_any_of<OutDataType, F8, BF8, F16, BF16, F32, pk_int4_t, pk_fp4_t, I8, I32, int>::value,
                   "Warning: Unhandled OutDataType for setting up the relative threshold!");
 
     double output_error = 0;
@@ -57,7 +57,7 @@ double get_relative_threshold(const int number_of_accumulations = 1)
     }
     double midway_error = std::max(compute_error, output_error);
 
-    static_assert(is_any_of<AccDataType, F8, BF8, F16, BF16, F32, pk_int4_t, I8, I32, int>::value,
+    static_assert(is_any_of<AccDataType, F8, BF8, F16, BF16, F32, pk_int4_t, pk_fp4_t, I8, I32, int>::value,
                   "Warning: Unhandled AccDataType for setting up the relative threshold!");
 
     double acc_error = 0;
@@ -84,7 +84,7 @@ double get_absolute_threshold(const double max_possible_num, const int number_of
     using I32  = int32_t;
 
     static_assert(
-        is_any_of<ComputeDataType, F8, BF8, F16, BF16, F32, pk_int4_t, I8, I32, int>::value,
+        is_any_of<ComputeDataType, F8, BF8, F16, BF16, F32, pk_int4_t, pk_fp4_t, I8, I32, int>::value,
         "Warning: Unhandled ComputeDataType for setting up the absolute threshold!");
 
     auto expo            = std::log2(std::abs(max_possible_num));
@@ -98,7 +98,7 @@ double get_absolute_threshold(const double max_possible_num, const int number_of
         compute_error = std::pow(2, expo - numeric_traits<ComputeDataType>::mant) * 0.5;
     }
 
-    static_assert(is_any_of<OutDataType, F8, BF8, F16, BF16, F32, pk_int4_t, I8, I32, int>::value,
+    static_assert(is_any_of<OutDataType, F8, BF8, F16, BF16, F32, pk_int4_t, pk_fp4_t, I8, I32, int>::value,
                   "Warning: Unhandled OutDataType for setting up the absolute threshold!");
 
     double output_error = 0;
@@ -112,11 +112,11 @@ double get_absolute_threshold(const double max_possible_num, const int number_of
     }
     double midway_error = std::max(compute_error, output_error);
 
-    static_assert(is_any_of<AccDataType, F8, BF8, F16, BF16, F32, pk_int4_t, I8, I32, int>::value,
+    static_assert(is_any_of<AccDataType, F8, BF8, F16, BF16, F32, pk_int4_t, pk_fp4_t, I8, I32, int>::value,
                   "Warning: Unhandled AccDataType for setting up the absolute threshold!");
 
     double acc_error = 0;
-    if constexpr(is_any_of<AccDataType, pk_int4_t, I8, I32, int>::value)
+    if constexpr(is_any_of<AccDataType, pk_int4_t, pk_fp4_t, I8, I32, int>::value)
     {
         return 0;
     }
@@ -514,4 +514,80 @@ std::enable_if_t<(std::is_same_v<ranges::range_value_t<Range>, ranges::range_val
     return res;
 }
 
+// template <typename Range, typename RefRange>
+// std::enable_if_t<(std::is_same_v<ranges::range_value_t<Range>, ranges::range_value_t<RefRange>> &&
+//                   std::is_same_v<ranges::range_value_t<Range>, fp4_t>),
+//                  bool>
+//     CK_TILE_HOST check_err(const Range& out,
+//                            const RefRange& ref,
+//                            const std::string& msg               = "Error: Incorrect results!",
+//                            unsigned max_rounding_point_distance = 1,
+//                            double atol                          = 1e-1,
+//                            bool allow_infinity_ref              = false)
+// {
+//     if(out.size() != ref.size())
+//     {
+//         std::cerr << msg << " out.size() != ref.size(), :" << out.size() << " != " << ref.size()
+//                   << std::endl;
+//         return false;
+//     }
+// 
+//     const auto is_infinity_error = [=](auto o, auto r) {
+//         const bool either_not_finite = !std::isfinite(o) || !std::isfinite(r);
+//         const bool both_infinite_and_same =
+//             std::isinf(o) && std::isinf(r) && (bit_cast<uint64_t>(o) == bit_cast<uint64_t>(r));
+// 
+//         return either_not_finite && !(allow_infinity_ref && both_infinite_and_same);
+//     };
+// 
+//     static const auto get_rounding_point_distance = [](fp4_t o, fp4_t r) -> unsigned {
+//         static const auto get_sign_bit = [](fp4_t v) -> bool {
+//             return 0x80 & bit_cast<uint8_t>(v);
+//         };
+// 
+//         if(get_sign_bit(o) ^ get_sign_bit(r))
+//         {
+//             return std::numeric_limits<unsigned>::max();
+//         }
+//         else
+//         {
+//             return std::abs(bit_cast<int8_t>(o) - bit_cast<int8_t>(r));
+//         }
+//     };
+// 
+//     bool res{true};
+//     int err_count  = 0;
+//     double err     = 0;
+//     double max_err = std::numeric_limits<float>::min();
+//     for(std::size_t i = 0; i < ref.size(); ++i)
+//     {
+//         const fp4_t o_fp4   = *std::next(std::begin(out), i);
+//         const fp4_t r_fp4   = *std::next(std::begin(ref), i);
+//         const double o_fp64 = type_convert<float>(o_fp4);
+//         const double r_fp64 = type_convert<float>(r_fp4);
+//         err                 = std::abs(o_fp64 - r_fp64);
+//         if(!(less_equal<double>{}(err, atol) ||
+//              get_rounding_point_distance(o_fp4, r_fp4) <= max_rounding_point_distance) ||
+//            is_infinity_error(o_fp64, r_fp64))
+//         {
+//             max_err = err > max_err ? err : max_err;
+//             err_count++;
+//             if(err_count < 5)
+//             {
+//                 std::cerr << msg << std::setw(12) << std::setprecision(7) << " out[" << i
+//                           << "] != ref[" << i << "]: " << o_fp64 << " != " << r_fp64 << std::endl;
+//             }
+//             res = false;
+//         }
+//     }
+//     if(!res)
+//     {
+//         const float error_percent =
+//             static_cast<float>(err_count) / static_cast<float>(out.size()) * 100.f;
+//         std::cerr << "max err: " << max_err;
+//         std::cerr << ", number of errors: " << err_count;
+//         std::cerr << ", " << error_percent << "% wrong values" << std::endl;
+//     }
+//     return res;
+// }
 } // namespace ck_tile

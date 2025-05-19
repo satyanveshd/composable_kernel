@@ -337,6 +337,7 @@ struct tile_window_with_static_distribution
                     get_bottom_tensor_view().template get_vectorized_elements<vector_t>(
                         bottom_tensor_thread_coord, 0, bool_constant<oob_conditional_check>{});
 #if 1
+//static_assert(std::is_same_v<DataType, _Float16>, "debug");
                 // write into distributed tensor
                 static_for<0, Traits::ScalarPerVector, Traits::PackedSize>{}([&](auto j) {
                     constexpr auto idx_ys = generate_tuple(

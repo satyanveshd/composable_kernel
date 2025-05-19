@@ -16,6 +16,8 @@
 
 namespace ck_tile {
 
+using fp32x2_t = float __attribute__((ext_vector_type(2)));
+
 // Packed 2xint4
 struct pk_int4_t
 {
@@ -23,6 +25,7 @@ struct pk_int4_t
     type data;
     CK_TILE_HOST_DEVICE constexpr pk_int4_t() : data{type{}} {}
     CK_TILE_HOST_DEVICE constexpr pk_int4_t(type init) : data{init} {}
+    CK_TILE_HOST_DEVICE constexpr operator fp32x2_t() const;
 };
 
 // limits
@@ -97,7 +100,6 @@ struct numeric_traits<pk_int4_t>
     static constexpr int PackedSize = 2;
 };
 
-using fp32x2_t = float __attribute__((ext_vector_type(2)));
 using fp16x2_t = _Float16 __attribute__((ext_vector_type(2)));
 using bf16x2_t = bf16_raw_t __attribute__((ext_vector_type(2)));
 
@@ -114,6 +116,9 @@ CK_TILE_HOST_DEVICE fp32x2_t pk_int4_t_to_fp32x2_t(const pk_int4_t& x)
     fp32x2_t res = {x_l, x_h};
 #endif
     return res;
+}
+CK_TILE_HOST_DEVICE constexpr pk_int4_t::operator fp32x2_t() const {
+    return pk_int4_t_to_fp32x2_t(*this);
 }
 
 CK_TILE_HOST_DEVICE fp16x2_t pk_int4_t_to_halfx2_t(const pk_int4_t& x)
@@ -146,5 +151,6 @@ CK_TILE_HOST_DEVICE bf16x2_t pk_int4_t_to_bfloat16x2_t(const pk_int4_t& x)
 #endif
     return res;
 }
+
 
 } // namespace ck_tile

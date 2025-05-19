@@ -180,21 +180,21 @@ struct BlockUniversalGemmAsBsCr
     }
 
     private:
-    template <typename WarpWindow, typename WarpTile>
+    template <typename DataType, typename WarpWindow, typename WarpTile>
     CK_TILE_DEVICE static void load_interleaved_pk_type(WarpTile& warp_tile,
                                                         const WarpWindow& warp_window)
     {
         constexpr index_t UnaryOpSize = 8;
         const element_wise::PassThroughPack8 elementwise_op{};
-        constexpr index_t thread_buffer_size = WarpTile::get_thread_buffer_size() / UnaryOpSize;
-        const auto in_dstr_tensors           = load_tile(warp_window);
+	constexpr index_t thread_buffer_size = WarpTile::get_thread_buffer_size() / UnaryOpSize;
+	const auto in_dstr_tensors           = load_tile(warp_window);
 
-        static_assert(WarpTile::get_thread_buffer_size() % UnaryOpSize == 0);
+	static_assert(WarpTile::get_thread_buffer_size() % UnaryOpSize == 0);
 
         using ComputeVectorType = ComputeDataType __attribute__((ext_vector_type(UnaryOpSize)));
         static_for<0, thread_buffer_size, 1>{}([&](auto i) {
-            elementwise_op(warp_tile.get_thread_buffer().template get_as<ComputeVectorType>()(i),
-                           in_dstr_tensors.get_thread_buffer().template get_as<pk_int4x4_t>()[i]);
+	    elementwise_op(warp_tile.get_thread_buffer().template get_as<ComputeVectorType>()(i),
+			    in_dstr_tensors.get_thread_buffer().template get_as<DataType>()[i]);
         });
     }
 
@@ -233,7 +233,11 @@ struct BlockUniversalGemmAsBsCr
 
             if constexpr(std::is_same_v<ADataType, pk_int4_t>)
             {
-                load_interleaved_pk_type(a_warp_tile_, a_block_window);
+                load_interleaved_pk_type<pk_int4x4_t>(a_warp_tile_, a_block_window);
+            }
+            else if (std::is_same_v<ADataType, pk_fp4_t>)
+            {
+                load_interleaved_pk_type<pk_fp4x4_t>(a_warp_tile_, a_block_window);
             }
             else
             {
@@ -241,7 +245,11 @@ struct BlockUniversalGemmAsBsCr
             }
             if constexpr(std::is_same_v<BDataType, pk_int4_t>)
             {
-                load_interleaved_pk_type(b_warp_tile_, b_block_window);
+                load_interleaved_pk_type<pk_int4x4_t>(b_warp_tile_, b_block_window);
+            }
+            else if (std::is_same_v<BDataType, pk_fp4_t>)
+            {
+                load_interleaved_pk_type<pk_fp4x4_t>(b_warp_tile_, b_block_window);
             }
             else
             {
@@ -306,7 +314,11 @@ struct BlockUniversalGemmAsBsCr
         {
             if constexpr(std::is_same_v<ADataType, pk_int4_t>)
             {
-                load_interleaved_pk_type(a_warp_tile_, a_block_window);
+                load_interleaved_pk_type<pk_int4x4_t>(a_warp_tile_, a_block_window);
+            }
+            else if (std::is_same_v<ADataType, pk_fp4_t>)
+            {
+                load_interleaved_pk_type<pk_fp4x4_t>(a_warp_tile_, a_block_window);
             }
             else
             {
@@ -314,7 +326,11 @@ struct BlockUniversalGemmAsBsCr
             }
             if constexpr(std::is_same_v<BDataType, pk_int4_t>)
             {
-                load_interleaved_pk_type(b_warp_tile_, b_block_window);
+                load_interleaved_pk_type<pk_int4x4_t>(b_warp_tile_, b_block_window);
+            }
+            else if (std::is_same_v<BDataType, pk_fp4_t>)
+            {
+                load_interleaved_pk_type<pk_fp4x4_t>(b_warp_tile_, b_block_window);
             }
             else
             {
@@ -414,7 +430,11 @@ struct BlockUniversalGemmAsBsCr
 
             if constexpr(std::is_same_v<ADataType, pk_int4_t>)
             {
-                load_interleaved_pk_type(a_warp_tile_, a_block_window);
+                load_interleaved_pk_type<pk_int4x4_t>(a_warp_tile_, a_block_window);
+            }
+            else if (std::is_same_v<ADataType, pk_fp4_t>)
+            {
+                load_interleaved_pk_type<pk_fp4x4_t>(a_warp_tile_, a_block_window);
             }
             else
             {
@@ -422,7 +442,11 @@ struct BlockUniversalGemmAsBsCr
             }
             if constexpr(std::is_same_v<BDataType, pk_int4_t>)
             {
-                load_interleaved_pk_type(b_warp_tile_, b_block_window);
+                load_interleaved_pk_type<pk_int4x4_t>(b_warp_tile_, b_block_window);
+            }
+            else if (std::is_same_v<BDataType, pk_fp4_t>)
+            {
+                load_interleaved_pk_type<pk_fp4x4_t>(b_warp_tile_, b_block_window);
             }
             else
             {

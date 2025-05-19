@@ -939,14 +939,33 @@ struct buffer_view<address_space_enum::lds,
                         (std::is_same_v<remove_cvref_t<T>, pk_int4x8_t> &&
                          std::is_same_v<remove_cvref_t<X>, thread_buffer<pk_int4_t, 8>>) ||
                         (std::is_same_v<remove_cvref_t<T>, pk_int4x16_t> &&
-                         std::is_same_v<remove_cvref_t<X>, thread_buffer<pk_int4_t, 16>>),
+                         std::is_same_v<remove_cvref_t<X>, thread_buffer<pk_int4_t, 16>>) ||
+                        // ext_vector_type for pk_fp4 must use int8_t as type
+                        (std::is_same_v<remove_cvref_t<T>, pk_fp4_t> &&
+                         std::is_same_v<remove_cvref_t<X>, thread_buffer<pk_fp4_t, 1>>) ||
+                        (std::is_same_v<remove_cvref_t<T>, pk_fp4_t> &&
+                         std::is_same_v<remove_cvref_t<X>, thread_buffer<pk_fp4_t, 2>>) ||
+                        (std::is_same_v<remove_cvref_t<T>, pk_fp4_t> &&
+                         std::is_same_v<remove_cvref_t<X>, thread_buffer<pk_fp4_t, 4>>) ||
+                        (std::is_same_v<remove_cvref_t<T>, pk_fp4_t> &&
+                         std::is_same_v<remove_cvref_t<X>, thread_buffer<pk_fp4_t, 8>>) ||
+                        (std::is_same_v<remove_cvref_t<T>, pk_fp4_t> &&
+                         std::is_same_v<remove_cvref_t<X>, thread_buffer<pk_fp4_t, 16>>) ||
+                        (std::is_same_v<remove_cvref_t<T>, pk_fp4x4_t> &&
+                         std::is_same_v<remove_cvref_t<X>, thread_buffer<pk_fp4_t, 4>>) ||
+                        (std::is_same_v<remove_cvref_t<T>, pk_fp4x8_t> &&
+                         std::is_same_v<remove_cvref_t<X>, thread_buffer<pk_fp4_t, 8>>) ||
+                        (std::is_same_v<remove_cvref_t<T>, pk_fp4x16_t> &&
+                         std::is_same_v<remove_cvref_t<X>, thread_buffer<pk_fp4_t, 16>>),
                     "wrong! not implemented for this combination, please add "
                     "implementation");
 
                 if constexpr((std::is_same_v<remove_cvref_t<T>, int8_t> &&
                               std::is_same_v<remove_cvref_t<X>, int8_t>) ||
                              (std::is_same_v<remove_cvref_t<T>, pk_int4_t> &&
-                              std::is_same_v<remove_cvref_t<X>, thread_buffer<pk_int4_t, 1>>))
+                              std::is_same_v<remove_cvref_t<X>, thread_buffer<pk_int4_t, 1>>) ||
+                             (std::is_same_v<remove_cvref_t<T>, pk_fp4_t> &&
+                              std::is_same_v<remove_cvref_t<X>, thread_buffer<pk_fp4_t, 1>>))
                 {
                     // HACK: cast pointer of x is bad
                     // TODO: remove this after compiler fix
@@ -956,7 +975,9 @@ struct buffer_view<address_space_enum::lds,
                 else if constexpr((std::is_same_v<remove_cvref_t<T>, int8_t> &&
                                    std::is_same_v<remove_cvref_t<X>, int8x2_t>) ||
                                   (std::is_same_v<remove_cvref_t<T>, pk_int4_t> &&
-                                   std::is_same_v<remove_cvref_t<X>, thread_buffer<pk_int4_t, 2>>))
+                                   std::is_same_v<remove_cvref_t<X>, thread_buffer<pk_int4_t, 2>>) ||
+                                  (std::is_same_v<remove_cvref_t<T>, pk_fp4_t> &&
+                                   std::is_same_v<remove_cvref_t<X>, thread_buffer<pk_fp4_t, 2>>))
                 {
                     // HACK: cast pointer of x is bad
                     // TODO: remove this after compiler fix
@@ -966,7 +987,9 @@ struct buffer_view<address_space_enum::lds,
                 else if constexpr((std::is_same_v<remove_cvref_t<T>, int8_t> &&
                                    std::is_same_v<remove_cvref_t<X>, int8x4_t>) ||
                                   (std::is_same_v<remove_cvref_t<T>, pk_int4_t> &&
-                                   std::is_same_v<remove_cvref_t<X>, thread_buffer<pk_int4_t, 4>>))
+                                   std::is_same_v<remove_cvref_t<X>, thread_buffer<pk_int4_t, 4>>) ||
+                                  (std::is_same_v<remove_cvref_t<T>, pk_fp4_t> &&
+                                   std::is_same_v<remove_cvref_t<X>, thread_buffer<pk_fp4_t, 4>>))
                 {
                     // HACK: cast pointer of x is bad
                     // TODO: remove this after compiler fix
@@ -976,7 +999,9 @@ struct buffer_view<address_space_enum::lds,
                 else if constexpr((std::is_same_v<remove_cvref_t<T>, int8_t> &&
                                    std::is_same_v<remove_cvref_t<X>, int8x8_t>) ||
                                   (std::is_same_v<remove_cvref_t<T>, pk_int4_t> &&
-                                   std::is_same_v<remove_cvref_t<X>, thread_buffer<pk_int4_t, 8>>))
+                                   std::is_same_v<remove_cvref_t<X>, thread_buffer<pk_int4_t, 8>>) ||
+                                  (std::is_same_v<remove_cvref_t<T>, pk_fp4_t> &&
+                                   std::is_same_v<remove_cvref_t<X>, thread_buffer<pk_fp4_t, 8>>))
                 {
                     // HACK: cast pointer of x is bad
                     // TODO: remove this after compiler fix
@@ -986,7 +1011,9 @@ struct buffer_view<address_space_enum::lds,
                 else if constexpr((std::is_same_v<remove_cvref_t<T>, int8_t> &&
                                    std::is_same_v<remove_cvref_t<X>, int8x16_t>) ||
                                   (std::is_same_v<remove_cvref_t<T>, pk_int4_t> &&
-                                   std::is_same_v<remove_cvref_t<X>, thread_buffer<pk_int4_t, 16>>))
+                                   std::is_same_v<remove_cvref_t<X>, thread_buffer<pk_int4_t, 16>>) || 
+                                  (std::is_same_v<remove_cvref_t<T>, pk_fp4_t> &&
+                                   std::is_same_v<remove_cvref_t<X>, thread_buffer<pk_fp4_t, 16>>))
                 {
                     // HACK: cast pointer of x is bad
                     // TODO: remove this after compiler fix
@@ -996,7 +1023,9 @@ struct buffer_view<address_space_enum::lds,
                 else if constexpr((std::is_same_v<remove_cvref_t<T>, int8x4_t> &&
                                    std::is_same_v<remove_cvref_t<X>, int8x4_t>) ||
                                   (std::is_same_v<remove_cvref_t<T>, pk_int4x4_t> &&
-                                   std::is_same_v<remove_cvref_t<X>, thread_buffer<pk_int4_t, 4>>))
+                                   std::is_same_v<remove_cvref_t<X>, thread_buffer<pk_int4_t, 4>>) ||
+                                  (std::is_same_v<remove_cvref_t<T>, pk_fp4x4_t> &&
+                                   std::is_same_v<remove_cvref_t<X>, thread_buffer<pk_fp4_t, 4>>))
                 {
                     // HACK: cast pointer of x is bad
                     // TODO: remove this after compiler fix
@@ -1006,7 +1035,9 @@ struct buffer_view<address_space_enum::lds,
                 else if constexpr((std::is_same_v<remove_cvref_t<T>, int8x8_t> &&
                                    std::is_same_v<remove_cvref_t<X>, int8x8_t>) ||
                                   (std::is_same_v<remove_cvref_t<T>, pk_int4x8_t> &&
-                                   std::is_same_v<remove_cvref_t<X>, thread_buffer<pk_int4_t, 8>>))
+                                   std::is_same_v<remove_cvref_t<X>, thread_buffer<pk_int4_t, 8>>) ||
+                                  (std::is_same_v<remove_cvref_t<T>, pk_fp4x8_t> &&
+                                   std::is_same_v<remove_cvref_t<X>, thread_buffer<pk_fp4_t, 8>>))
                 {
                     // HACK: cast pointer of x is bad
                     // TODO: remove this after compiler fix
@@ -1016,7 +1047,9 @@ struct buffer_view<address_space_enum::lds,
                 else if constexpr((std::is_same_v<remove_cvref_t<T>, int8x16_t> &&
                                    std::is_same_v<remove_cvref_t<X>, int8x16_t>) ||
                                   (std::is_same_v<remove_cvref_t<T>, pk_int4x16_t> &&
-                                   std::is_same_v<remove_cvref_t<X>, thread_buffer<pk_int4_t, 16>>))
+                                   std::is_same_v<remove_cvref_t<X>, thread_buffer<pk_int4_t, 16>>) ||
+                                  (std::is_same_v<remove_cvref_t<T>, pk_fp4x16_t> &&
+                                   std::is_same_v<remove_cvref_t<X>, thread_buffer<pk_fp4_t, 16>>))
                 {
                     // HACK: cast pointer of x is bad
                     // TODO: remove this after compiler fix

@@ -77,6 +77,13 @@ struct thread_buffer {
             [&](auto j) { vx.sub_data[j] = data[j]; });
         return vx.data;
     }
+    template <typename X_,
+              typename std::enable_if<!has_same_scalar_type<value_type, X_>::value, bool>::type = false>
+    CK_TILE_HOST_DEVICE constexpr auto _get_as() const {
+        static_assert(!std::is_same_v<X_, X_>, "Missing _get_as<> specialization.");
+	value_type ret[N];
+	return ret.data;
+    }
 
     template <typename X_,
               index_t Is,
@@ -95,6 +102,7 @@ struct thread_buffer {
             [&](auto j) { vx.sub_data(j) = operator[]((is * number<sizeof(X_)/sizeof(value_type)>{}) + j); });
         return vx.data;
     }
+
 
 #if 0
     template <typename X_,
@@ -125,20 +133,21 @@ struct thread_buffer {
     CK_TILE_HOST_DEVICE auto & get_as() {TB_COMMON_AS();
             return reinterpret_cast<thread_buffer<Tx, vx>&>(data);}
     template<typename Tx>
-    CK_TILE_HOST_DEVICE constexpr auto get_as() const {TB_COMMON_AS();
-            if constexpr(sizeof(value_type) <= 1 )
-            return _get_as<Tx>();   // TODO: current compiler for 8bit data need use union to get data back, should fix in the future
-            else
-            return reinterpret_cast<const thread_buffer<Tx, vx>&>(data);}
+	    CK_TILE_HOST_DEVICE constexpr auto get_as() const {TB_COMMON_AS();
+		    if constexpr(sizeof(value_type) <= 1 )
+
+			    return _get_as<Tx>();   // TODO: current compiler for 8bit data need use union to get data back, should fix in the future
+		    else
+			    return reinterpret_cast<const thread_buffer<Tx, vx>&>(data);}
     template<typename Tx, index_t I>
-    CK_TILE_HOST_DEVICE auto & get_as(number<I>) {TB_COMMON_AS();
-            return reinterpret_cast<thread_buffer<Tx, vx>&>(data).get(number<I>{});}
+	    CK_TILE_HOST_DEVICE auto & get_as(number<I>) {TB_COMMON_AS();
+		    return reinterpret_cast<thread_buffer<Tx, vx>&>(data).get(number<I>{});}
     template<typename Tx, index_t I>
-    CK_TILE_HOST_DEVICE constexpr auto get_as(number<I>) const {TB_COMMON_AS();
-            if constexpr(sizeof(value_type) <= 1 )
-            return _get_as<Tx>(number<I>{});   // TODO: current compiler for 8bit data need use union to get data back, should fix in the future
-            else
-            return reinterpret_cast<const thread_buffer<Tx, vx>&>(data).get(number<I>{});}
+	    CK_TILE_HOST_DEVICE constexpr auto get_as(number<I>) const {TB_COMMON_AS();
+		    if constexpr(sizeof(value_type) <= 1 )
+			    return _get_as<Tx>(number<I>{});   // TODO: current compiler for 8bit data need use union to get data back, should fix in the future
+		    else
+			    return reinterpret_cast<const thread_buffer<Tx, vx>&>(data).get(number<I>{});}
 
     template <typename Tx> CK_TILE_HOST_DEVICE constexpr void set_as(index_t i, const Tx & x)
             { TB_COMMON_AS();    reinterpret_cast<thread_buffer<Tx, vx>&>(data).at(i) = x; }

@@ -167,6 +167,16 @@ struct PassThroughPack2
         y.hi = type_convert<half_t>(x_h);
     }
 
+    CK_TILE_HOST_DEVICE constexpr void operator()(fp16x2_t& y, const pk_fp4_t& x) const
+    {
+        uint8_t x_u8 = bit_cast<uint8_t>(x);
+        uint8_t x_l  = (x_u8 >> 0) & 0x0f;
+        uint8_t x_h  = (x_u8 >> 4) & 0x0f;
+
+        y.lo = type_convert<half_t>(x_l);
+        y.hi = type_convert<half_t>(x_h);
+    }
+
     constexpr const static bool is_pack2_invocable = true;
 };
 

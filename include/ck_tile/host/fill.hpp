@@ -14,6 +14,7 @@
 
 #include "ck_tile/core.hpp"
 #include "ck_tile/host/joinable_thread.hpp"
+#include "ck_tile/core/numeric/pk_fp4.hpp"
 
 namespace ck_tile {
 
@@ -58,8 +59,16 @@ struct FillUniformDistribution
         {
             std::mt19937 gen(seed_.has_value() ? *seed_ : std::random_device{}());
             std::uniform_real_distribution<float> dis(a_, b_);
-            std::generate(
-                first, last, [&dis, &gen]() { return ck_tile::type_convert<T>(dis(gen)); });
+			if constexpr ( std::is_same_v<T, pk_fp4_t> ) {
+				std::generate(
+					first, last, [&dis, &gen]() { 
+						return ck_tile::type_convert<T>( fp32x2_t{dis(gen), dis(gen)}); 
+					});
+			}
+			else {
+				std::generate(
+    	            first, last, [&dis, &gen]() { return ck_tile::type_convert<T>(dis(gen)); });
+			}
         }
     }
 
@@ -282,7 +291,8 @@ struct FillMonotonicSeq
     {
         std::generate(first, last, [=, *this, n = init_value_]() mutable {
             auto tmp = n;
-            if constexpr(std::is_same_v<decltype(tmp), pk_int4_t>)
+            if constexpr(std::is_same_v<decltype(tmp), pk_int4_t> ||
+                         std::is_same_v<decltype(tmp), pk_fp4_t>)
             {
                 n.data += step_.data;
             }

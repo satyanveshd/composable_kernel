@@ -115,6 +115,16 @@ struct GemmTypeConfig<ck_tile::half_t>
 };
 
 template <>
+struct GemmTypeConfig<ck_tile::half_t, ck_tile::pk_fp4_t, ck_tile::half_t>
+{
+    using ADataType   = ck_tile::half_t;
+    using BDataType   = ck_tile::pk_fp4_t;
+    using AccDataType = float;
+    using CDataType   = ck_tile::half_t;
+};
+
+
+template <>
 struct GemmTypeConfig<ck_tile::bf16_t, ck_tile::bf16_t, ck_tile::bf16_t>
 {
     using ADataType   = ck_tile::bf16_t;
@@ -166,6 +176,11 @@ struct DataTypeTraits<double>
 };
 
 template <>
+struct DataTypeTraits<ck_tile::pk_fp4_t>
+{
+    static constexpr const char* name = "pk_fp4";
+};
+template <>
 struct DataTypeTraits<ck_tile::half_t>
 {
     static constexpr const char* name = "fp16";
@@ -208,7 +223,7 @@ auto create_args(int argc, char* argv[])
         .insert("stride_b", "0", "Tensor B stride")
         .insert("stride_c", "0", "Tensor C stride")
         .insert("v", "2", "0. No validation, 1. Validation on CPU, 2. Validation on GPU")
-        .insert("prec", "fp16", "data type. fp16/bf16/fp8/bf8")
+        .insert("prec", "fp4", "data type. fp16/bf16/fp8/bf8")
         .insert("warmup", "50", "number of iterations before benchmark the kernel")
         .insert("repeat", "100", "number of iterations to benchmark the kernel")
         .insert("timer", "gpu", "gpu:gpu timer, cpu:cpu timer")

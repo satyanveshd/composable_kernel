@@ -124,7 +124,8 @@ int run_gemm_example_prec_type(std::string a_layout, std::string b_layout, int a
     using Row = ck_tile::tensor_layout::gemm::RowMajor;
     using Col = ck_tile::tensor_layout::gemm::ColumnMajor;
 
-    if constexpr(std::is_same_v<BPrecType, ck_tile::pk_int4_t>)
+    if constexpr(std::is_same_v<BPrecType, ck_tile::pk_int4_t> ||
+                 std::is_same_v<BPrecType, ck_tile::pk_fp4_t>)
     {
         if(a_layout == "R" && b_layout == "C")
         {
@@ -139,7 +140,7 @@ int run_gemm_example_prec_type(std::string a_layout, std::string b_layout, int a
         else
         {
             throw std::runtime_error("Unsupported memory layout for the input matrices when "
-                                     "BPrecType is ck_tile::pk_int4_t!");
+                                     "BPrecType is ck_tile::pk_int4_t or pk_fp4_t!");
         }
     }
     else
@@ -181,30 +182,37 @@ int run_gemm_example(int argc, char* argv[])
     std::string a_layout  = arg_parser.get_str("a_layout");
     std::string b_layout  = arg_parser.get_str("b_layout");
 
-    if(data_type == "fp16")
-    {
-        return run_gemm_example_prec_type<ck_tile::half_t>(a_layout, b_layout, argc, argv);
-    }
-    else if(data_type == "bf16")
-    {
-        return run_gemm_example_prec_type<ck_tile::bf16_t>(a_layout, b_layout, argc, argv);
-    }
-    else if(data_type == "fp8")
-    {
-        return run_gemm_example_prec_type<ck_tile::fp8_t, ck_tile::fp8_t, ck_tile::half_t>(
-            a_layout, b_layout, argc, argv);
-    }
-    else if(data_type == "bf8")
-    {
-        return run_gemm_example_prec_type<ck_tile::bf8_t, ck_tile::bf8_t, ck_tile::half_t>(
-            a_layout, b_layout, argc, argv);
-    }
+//    if(data_type == "fp16")
+//    {
+//        return run_gemm_example_prec_type<ck_tile::half_t>(a_layout, b_layout, argc, argv);
+//    }
+//    else if(data_type == "bf16")
+//    {
+//        return run_gemm_example_prec_type<ck_tile::bf16_t>(a_layout, b_layout, argc, argv);
+//    }
+//    else if(data_type == "fp8")
+//    {
+//        return run_gemm_example_prec_type<ck_tile::fp8_t, ck_tile::fp8_t, ck_tile::half_t>(
+//            a_layout, b_layout, argc, argv);
+//    }
+//    else if(data_type == "bf8")
+//    {
+//        return run_gemm_example_prec_type<ck_tile::bf8_t, ck_tile::bf8_t, ck_tile::half_t>(
+//            a_layout, b_layout, argc, argv);
+//    }
 
 #if(CK_TILE_PIPELINE_DEFAULT == CK_TILE_PIPELINE_COMPUTE_V3)
-    else if(data_type == "pk_int4_t")
+//    else if(data_type == "pk_int4_t")
+    if(data_type == "pk_int4_t")
     {
         // TODO: Add support for bhalf_t ADataType
         return run_gemm_example_prec_type<ck_tile::half_t, ck_tile::pk_int4_t, ck_tile::half_t>(
+            a_layout, b_layout, argc, argv);
+    }
+    if(data_type == "pk_fp4_t")
+    {
+        // TODO: Add support for bhalf_t ADataType
+        return run_gemm_example_prec_type<ck_tile::half_t, ck_tile::pk_fp4_t, ck_tile::half_t>(
             a_layout, b_layout, argc, argv);
     }
 #endif
