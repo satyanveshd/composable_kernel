@@ -116,9 +116,16 @@ struct PassThroughPack8
     CK_TILE_HOST_DEVICE void operator()(Y& y, const X& x) const;
 
     CK_TILE_HOST_DEVICE constexpr void operator()(fp16x8_t& y, const pk_int4x4_t& x) const
-    {
+    { // 75316420 -> 76543210
         y.lo = i4_to_half4(bit_cast<int>(x));
         y.hi = i4_to_half4(bit_cast<int>(x) >> 8);
+    }
+    CK_TILE_HOST_DEVICE constexpr void operator()(fp16x8_t& y, const pk_fp4x4_t& x) const
+    {
+		y.lo.lo = fp16x2_t(x[0]);
+		y.lo.hi = fp16x2_t(x[1]);
+		y.hi.lo = fp16x2_t(x[2]);
+		y.hi.hi = fp16x2_t(x[3]);
     }
 
     CK_TILE_HOST_DEVICE constexpr void operator()(bf16x8_t& y, const pk_int4x4_t& x) const

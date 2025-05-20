@@ -272,8 +272,7 @@ int run_gemm_example_with_layouts(int argc,
     ck_tile::DeviceMem c_m_n_dev_buf(c_m_n_dev_result.get_element_space_size_in_bytes());
 
     static_assert(!GemmConfig::PermuteA, "Not implemented");
-    if constexpr(std::is_same_v<BDataType, ck_tile::pk_int4_t> ||
-                 std::is_same_v<BDataType, ck_tile::pk_fp4_t>)
+    if constexpr(std::is_same_v<BDataType, ck_tile::pk_int4_t>)
     {
         // Permute vector pk_i4x4 data for device implementation
         ck_tile::HostTensor<BDataType> b_k_n_dev = b_k_n;

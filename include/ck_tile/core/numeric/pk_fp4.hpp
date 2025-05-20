@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ck_tile/core/numeric/half.hpp"
+
 namespace ck_tile {
 
 using fp4_t = unsigned _BitInt(4);
@@ -14,16 +16,36 @@ struct pk_float4_e2m1_t
     static constexpr int exponent = 2;
     static constexpr int mantissa = 1;
     static constexpr int bias = 1;
-    using raw_type = int8_t;
+    using raw_type = uint8_t;
     using type = raw_type;
     raw_type data;
     // Refer: ONNX 1.19 Documentation
-    static constexpr float e2m1_table[16] = 
+    static constexpr float e2m1_to_fp32_table[16] = 
     {0, 0.5, 1, 1.5, 2, 3, 4, 6, 0, -0.5, -1, -1.5, -2, -3, -4, -6};
+	static constexpr fp16_t e2m1_to_fp16_table[16] = { // Need to TEST this encoding.
+		bit_cast<fp16_t>(static_cast<uint16_t>(0x0000)), //  0
+		bit_cast<fp16_t>(static_cast<uint16_t>(0x3800)), //  0.5
+		bit_cast<fp16_t>(static_cast<uint16_t>(0x3C00)), //  1
+		bit_cast<fp16_t>(static_cast<uint16_t>(0x3E00)), //  1.5
+		bit_cast<fp16_t>(static_cast<uint16_t>(0x4000)), //  2
+		bit_cast<fp16_t>(static_cast<uint16_t>(0x4200)), //  3
+		bit_cast<fp16_t>(static_cast<uint16_t>(0x4400)), //  4
+		bit_cast<fp16_t>(static_cast<uint16_t>(0x4600)), //  6
+		bit_cast<fp16_t>(static_cast<uint16_t>(0x8000)), // -0
+		bit_cast<fp16_t>(static_cast<uint16_t>(0xB800)), // -0.5
+		bit_cast<fp16_t>(static_cast<uint16_t>(0xBC00)), // -1
+		bit_cast<fp16_t>(static_cast<uint16_t>(0xBE00)), // -1.5
+		bit_cast<fp16_t>(static_cast<uint16_t>(0xC000)), // -2
+		bit_cast<fp16_t>(static_cast<uint16_t>(0xC200)), // -3
+		bit_cast<fp16_t>(static_cast<uint16_t>(0xC400)), // -4
+		bit_cast<fp16_t>(static_cast<uint16_t>(0xC600))  // -6
+	};
+
     CK_TILE_HOST_DEVICE constexpr pk_float4_e2m1_t(): data{type{}} {}
     CK_TILE_HOST_DEVICE constexpr pk_float4_e2m1_t(type init): data{init} {}
     CK_TILE_HOST_DEVICE constexpr operator type() const { return data; }
     CK_TILE_HOST_DEVICE constexpr operator fp32x2_t() const;
+    CK_TILE_HOST_DEVICE constexpr operator fp16x2_t() const;
 // add init from two float / get / to_fp8x2
 };
 
@@ -113,8 +135,12 @@ struct numeric<pk_fp4_t>
 };
 
 CK_TILE_HOST_DEVICE constexpr pk_fp4_t::operator fp32x2_t() const {
-    return fp32x2_t{e2m1_table[data & 0xf], e2m1_table[(data >> 4) & 0xf]};
+    return fp32x2_t{e2m1_to_fp32_table[data & 0xf], e2m1_to_fp32_table[(data >> 4) & 0xf]};
 }
+CK_TILE_HOST_DEVICE constexpr pk_fp4_t::operator fp16x2_t() const {
+    return fp16x2_t{e2m1_to_fp16_table[data & 0xf], e2m1_to_fp16_table[(data >> 4) & 0xf]};
+}
+
 CK_TILE_HOST_DEVICE constexpr pk_fp4_raw_t float_to_e2m1(float x) {
     // {0, 0.5, 1, 1.5, 2, 3, 4, 6, 0, -0.5, -1, -1.5, -2, -3, -4, -6}
 	pk_fp4_raw_t res = (x<0 ? 0b00001000 : 0);

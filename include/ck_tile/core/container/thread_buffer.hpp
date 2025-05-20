@@ -41,8 +41,16 @@ struct thread_buffer {
     value_type data[N];
 
     // TODO: this ctor can't ignore
-    CK_TILE_HOST_DEVICE constexpr thread_buffer() : data{} {}
-    CK_TILE_HOST_DEVICE constexpr thread_buffer(const value_type & o) : data{o} {}
+    CK_TILE_HOST_DEVICE constexpr thread_buffer() : data{} {
+	//static_assert(N_ == 99123, "debug");
+//			printf("tid:(%u,%u,%u) bid:(%u,%u,%u)   "
+//			, threadIdx.x, threadIdx.y, threadIdx.z, blockIdx.x, blockIdx.y, blockIdx.z);
+	}
+    CK_TILE_HOST_DEVICE constexpr thread_buffer(const value_type & o) : data{o} {
+	//static_assert(N_ == 99125, "debug");
+//			printf("tid:(%u,%u,%u) bid:(%u,%u,%u)   "
+//			, threadIdx.x, threadIdx.y, threadIdx.z, blockIdx.x, blockIdx.y, blockIdx.z);
+	}
 
     CK_TILE_HOST_DEVICE static constexpr auto size() { return N; }
     CK_TILE_HOST_DEVICE auto & get() {return data; }
