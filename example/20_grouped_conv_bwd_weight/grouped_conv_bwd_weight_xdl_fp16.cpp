@@ -4,67 +4,30 @@
 #include "common.hpp"
 
 #include "ck/tensor_operation/gpu/device/impl/device_grouped_conv_bwd_weight_xdl_cshuffle.hpp"
+#include "ck/tensor_operation/gpu/device/impl/device_grouped_conv_bwd_weight_two_stage_xdl_cshuffle.hpp"
+#include "ck/utility/blkgemmpipe_scheduler.hpp"
 
-using InDataType  = F16;
-using WeiDataType = F16;
-using OutDataType = F16;
+using InDataType  = BF16;
+using WeiDataType = BF16;
+using OutDataType = BF16;
 using AccDataType = F32;
 
 using InElementOp  = PassThrough;
 using WeiElementOp = PassThrough;
 using OutElementOp = PassThrough;
+//[K,      M]      x [K,              N  ] - >   [M,     N]
+//[N * Ho * Wo, K] x [N * Ho * Wo, Y * X *C] -> [K, Y * X * C]
+// Col Row
+// 1. Change Lds layout
+// 2. Improve vector store (padding for workspace?)
+// 3. Cache settings for workspace
+// M =64
+// N = 117
+// K = 810000
 
 template <ck::index_t NDimSpatial>
 using DeviceConvBwdWeightInstance =
-    ck::tensor_operation::device::DeviceGroupedConvBwdWeight_Xdl_CShuffle<
-        NDimSpatial,
-        ck::tuple_element_t<NDimSpatial - 1,
-                            ck::Tuple<ck::tensor_layout::convolution::GNWC,
-                                      ck::tensor_layout::convolution::GNHWC,
-                                      ck::tensor_layout::convolution::GNDHWC>>,
-        ck::tuple_element_t<NDimSpatial - 1,
-                            ck::Tuple<ck::tensor_layout::convolution::GKXC,
-                                      ck::tensor_layout::convolution::GKYXC,
-                                      ck::tensor_layout::convolution::GKZYXC>>,
-        ck::tuple_element_t<NDimSpatial - 1,
-                            ck::Tuple<ck::tensor_layout::convolution::GNWK,
-                                      ck::tensor_layout::convolution::GNHWK,
-                                      ck::tensor_layout::convolution::GNDHWK>>,
-        InDataType,           // InDataType
-        WeiDataType,          // WeiDataType
-        OutDataType,          // OutDataType
-        AccDataType,          // AccDataType
-        InElementOp,          // InElementwiseOperation
-        WeiElementOp,         // WeiElementwiseOperation
-        OutElementOp,         // OutElementwiseOperation
-        ConvBwdWeightDefault, // ConvolutionBackwardWeightSpecialization
-        256,                  // BlockSize
-        128,                  // MPerBlock
-        128,                  // NPerBlock
-        4,                    // K0PerBlock
-        8,                    // K1
-        32,                   // MPerXdl
-        32,                   // NPerXdl
-        2,                    // MXdlPerWave
-        2,                    // NXdlPerWave
-        S<1, 4, 16, 4>,       // ABlockTransferThreadClusterLengths_K0_M_K1
-        S<0, 3, 1, 2>,        // ABlockTransferThreadClusterArrangeOrder
-        S<0, 2, 1, 3>,        // ABlockTransferSrcAccessOrder
-        2,                    // ABlockTransferSrcVectorDim
-        8,                    // ABlockTransferSrcScalarPerVector
-        2,                    // ABlockTransferDstScalarPerVector_K1
-        true,                 // ABlockLdsAddExtraM
-        S<1, 4, 16, 4>,       // BBlockTransferThreadClusterLengths_K0_N_K1
-        S<0, 3, 1, 2>,        // BBlockTransferThreadClusterArrangeOrder
-        S<0, 2, 1, 3>,        // BBlockTransferSrcAccessOrder
-        2,                    // BBlockTransferSrcVectorDim
-        8,                    // BBlockTransferSrcScalarPerVector
-        2,                    // BBlockTransferDstScalarPerVector_K1
-        true,                 // BBlockLdsAddExtraN
-        1,                    // CShuffleMXdlPerWavePerShuffle
-        1,                    // CShuffleNXdlPerWavePerShuffle
-        S<1, 32, 1, 4>,       // CBlockTransferClusterLengths_MBlock_MPerBlock_NBlock_NPerBlock
-        128 / (sizeof(WeiDataType) * CHAR_BIT)>; // CBlockTransferScalarPerVector_NWaveNPerXdl
+        ck::tensor_operation::device::DeviceGroupedConvBwdWeightTwoStage_Xdl_CShuffle< NDimSpatial,  ck::tensor_layout::convolution::NHWGC,   ck::tensor_layout::convolution::GKYXC,   ck::tensor_layout::convolution::NHWGK,   BF16,    BF16,    BF16,     F32, PassThrough, PassThrough, PassThrough,                  ConvBwdWeightDefault,    256,    64,    64,     32,   8,   32,   32,    1,    1,  S<4, 64,  1>, S<2, 0, 1>,  S<1, 0, 2>,                   1,              1,              8,      false,  S<4, 64,  1>,  S<2, 0, 1>,  S<1, 0, 2>,                1,              1,              8,      false,           1,           1,   S<1, 32, 1, 8>,                  1, ck::BlockGemmPipelineScheduler::Interwave, ck::BlockGemmPipelineVersion::v1>;
 
 template <ck::index_t NDimSpatial>
 using HostConvBwdWeightInstance = ck::tensor_operation::host::ReferenceConvBwdWeight<NDimSpatial,
@@ -89,9 +52,9 @@ int main(int argc, char* argv[])
 
     switch(conv_param.num_dim_spatial_)
     {
-    case 1: return !run_grouped_conv_bwd_weight<1>(config, conv_param);
+    // case 1: return !run_grouped_conv_bwd_weight<1>(config, conv_param);
     case 2: return !run_grouped_conv_bwd_weight<2>(config, conv_param);
-    case 3: return !run_grouped_conv_bwd_weight<3>(config, conv_param);
+    // case 3: return !run_grouped_conv_bwd_weight<3>(config, conv_param);
     default: break;
     }
 

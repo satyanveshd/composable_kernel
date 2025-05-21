@@ -78,6 +78,11 @@ bool run_grouped_conv_bwd_weight(const ExecutionConfig& config,
     // do GEMM
     auto conv     = DeviceConvBwdWeightInstance<NDimSpatial>{};
     auto invoker  = conv.MakeInvoker();
+
+
+
+    for (int sp = 1; sp < 2048; sp*=2) {
+
     auto argument = conv.MakeArgument(static_cast<InDataType*>(in_device_buf.GetDeviceBuffer()),
                                       static_cast<WeiDataType*>(wei_device_buf.GetDeviceBuffer()),
                                       static_cast<OutDataType*>(out_device_buf.GetDeviceBuffer()),
@@ -94,7 +99,12 @@ bool run_grouped_conv_bwd_weight(const ExecutionConfig& config,
                                       InElementOp{},
                                       WeiElementOp{},
                                       OutElementOp{},
-                                      split_k);
+                                      sp);
+                                    (void)(split_k);
+
+    const std::size_t workspace_sz = conv.GetWorkSpaceSize(&argument);
+    DeviceMem workspace_dev(workspace_sz);
+    conv.SetWorkSpacePointer(&argument, workspace_dev.GetDeviceBuffer());
 
     if(!conv.IsSupportedArgument(argument))
     {
@@ -104,7 +114,7 @@ bool run_grouped_conv_bwd_weight(const ExecutionConfig& config,
         return true;
     }
 
-    invoker.Run(argument, StreamConfig{nullptr, false});
+    float avg_time = invoker.Run(argument, StreamConfig{nullptr, config.time_kernel});
 
     if(config.do_verification)
     {
@@ -128,10 +138,9 @@ bool run_grouped_conv_bwd_weight(const ExecutionConfig& config,
 
         wei_device_buf.FromDevice(wei_device_result.mData.data());
 
-        return ck::utils::check_err(wei_device_result.mData, wei_host_result.mData);
+         ck::utils::check_err(wei_device_result.mData, wei_host_result.mData);
     }
 
-    float avg_time = invoker.Run(argument, StreamConfig{nullptr, config.time_kernel});
 
     std::size_t flop      = conv_param.GetFlops();
     std::size_t num_btype = conv_param.GetByte<InDataType, WeiDataType, OutDataType>();
@@ -142,7 +151,8 @@ bool run_grouped_conv_bwd_weight(const ExecutionConfig& config,
 
     std::cerr << "Perf: " << avg_time << " ms, " << tflops << " TFlops, " << gb_per_sec << " GB/s"
               << std::endl
-              << "DeviceOp: " << conv.GetTypeString() << std::endl;
+              << "DeviceOp: " << conv.GetTypeString() << "SplitK" << sp<< std::endl;
+    }
 
     return true;
 }

@@ -392,8 +392,8 @@ struct DeviceGroupedConvBwdWeightTwoStage_Xdl_CShuffle
         remove_cvref_t<decltype(GetElementwiseCGridDesc<NDimSpatial>())>;
 
     using GridwiseGemm =
-        GridwiseGemm_xdl_cshuffle_v3<tensor_layout::gemm::RowMajor,
-                                     tensor_layout::gemm::ColumnMajor,
+        GridwiseGemm_xdl_cshuffle_v3<tensor_layout::gemm::ColumnMajor,
+                                     tensor_layout::gemm::RowMajor,
                                      tensor_layout::gemm::RowMajor,
                                      ADataType,
                                      BDataType,
@@ -1540,8 +1540,11 @@ struct DeviceGroupedConvBwdWeightTwoStage_Xdl_CShuffle
                                                    grid_size_a);
             }
 
-            avg_time += RunGemmV3(arg, stream_config);
-            avg_time += launch_elementwise_kernel();
+            float avg_time_gemm = RunGemmV3(arg, stream_config);
+            std::cout<<"GEMMMMM: " <<avg_time_gemm<<std::endl;
+            float avg_time_elem = launch_elementwise_kernel();
+            std::cout<<"ELEMENTWISE: " <<avg_time_elem<<std::endl;
+            avg_time = avg_time_gemm + avg_time_elem;
             return avg_time;
         }
 

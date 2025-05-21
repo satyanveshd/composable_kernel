@@ -45,18 +45,7 @@ struct CommonLayoutSetting
 namespace ctl = ck::tensor_layout::convolution;
 template <ck::index_t NDimSpatial>
 struct CommonLayoutSettingSelector
-    : CommonLayoutSetting<ck::tuple_element_t<NDimSpatial - 1,
-                                              ck::Tuple<ck::tensor_layout::convolution::GNWC,
-                                                        ck::tensor_layout::convolution::GNHWC,
-                                                        ck::tensor_layout::convolution::GNDHWC>>,
-                          ck::tuple_element_t<NDimSpatial - 1,
-                                              ck::Tuple<ck::tensor_layout::convolution::GKXC,
-                                                        ck::tensor_layout::convolution::GKYXC,
-                                                        ck::tensor_layout::convolution::GKZYXC>>,
-                          ck::tuple_element_t<NDimSpatial - 1,
-                                              ck::Tuple<ck::tensor_layout::convolution::GNWK,
-                                                        ck::tensor_layout::convolution::GNHWK,
-                                                        ck::tensor_layout::convolution::GNDHWK>>>
+    : CommonLayoutSetting<ck::tensor_layout::convolution::NHWGC, ck::tensor_layout::convolution::GKYXC, ck::tensor_layout::convolution::NHWGK>
 {
 };
 
@@ -73,13 +62,13 @@ struct ExecutionConfig final
 {
     bool do_verification = true;
     int init_method      = 1;
-    bool time_kernel     = false;
+    bool time_kernel     = true;
 };
 
 #define DefaultConvParam                                                                         \
     ck::utils::conv::ConvParam                                                                   \
     {                                                                                            \
-        3, 4, 1, 128, 256, {3, 3, 3}, {14, 14, 14}, {1, 1, 1}, {1, 1, 1}, {1, 1, 1}, { 1, 1, 1 } \
+        2, 1, 16, 64, 13, {3, 3}, {225, 225}, {1, 1}, {1, 1}, {1, 1}, { 1, 1 } \
     }
 
 inline void print_help_msg()
