@@ -31,8 +31,10 @@ constexpr auto GemmSpec      = ck::tensor_operation::device::GemmSpecialization:
 constexpr auto BlkGemmPSched = ck::BlockGemmPipelineScheduler::Intrawave;
 constexpr auto BlkGemmPVer   = ck::BlockGemmPipelineVersion::v3;
 
+#define DEFAULT_INSTANCE 2
 // AB DataType: f4x2_pk_t
 // Mathmatically, all numbers are represented as f4x2.
+#if DEFAULT_INSTANCE == 0
 using DeviceOpInstance = ck::tensor_operation::device::DeviceGemmMX_Xdl_CShuffleV3_BPreshuffle<
     ALayout,          // ALayout
     BLayout,          // BLayout
@@ -82,6 +84,113 @@ using DeviceOpInstance = ck::tensor_operation::device::DeviceGemmMX_Xdl_CShuffle
     ADataType,        // ComputeTypeA
     BDataType         // ComputeTypeB
     >;
+
+#endif
+
+#if DEFAULT_INSTANCE == 1
+using DeviceOpInstance = ck::tensor_operation::device::DeviceGemmMX_Xdl_CShuffleV3_BPreshuffle<
+    ALayout,          // ALayout
+    BLayout,          // BLayout
+    CLayout,          // CLayout
+    ADataType,        // ADataType
+    XPackedDataType,  // AScaleDataType
+    BDataType,        // BDataType
+    XPackedDataType,  // BScaleDataType
+    CDataType,        // CDataType
+    AccDataType,      // GemmAccDataType
+    CShuffleDataType, // CShuffleDataType
+    AElementOp,       // AElementwiseOperation
+    BElementOp,       // BElementwiseOperation
+    CElementOp,       // CElementwiseOperation
+    GemmSpec,         // GemmSpec
+    ScaleBlockSize,   // ScaleBlockSize: Scaling block size
+    256,              // BlockSize: Thread block size
+    128,              // MPerBlock
+    256,              // NPerBlock
+    KPerBlock,        // KPerBlock
+    16,               // AK1
+    16,               // BK1
+    16,               // MPerXDL
+    16,               // NPerXDL
+    8,                // MXdlPerWave
+    4,                // NXdlPerWave
+    S<8, 32, 1>,      // ABlockTransferThreadClusterLengths_AK0_M_AK1
+    S<1, 0, 2>,       // ABlockTransferThreadClusterArrangeOrder
+    S<1, 0, 2>,       // ABlockTransferSrcAccessOrder
+    2,                // ABlockTransferSrcVectorDim
+    16,               // ABlockTransferSrcScalarPerVector
+    16,               // ABlockTransferDstScalarPerVector_AK1
+    true,             // ABlockLdsExtraM
+    S<8, 32, 1>,      // BBlockTransferThreadClusterLengths_BK0_N_BK1
+    S<1, 0, 2>,       // BBlockTransferThreadClusterArrangeOrder
+    S<1, 0, 2>,       // BBlockTransferSrcAccessOrder
+    2,                // BBlockTransferSrcVectorDim
+    16,               // BBlockTransferSrcScalarPerVector
+    16,               // BBlockTransferDstScalarPerVector_BK1
+    true,             // BBlockLdsExtraN
+    2,                // CShuffleMXdlPerWavePerShuffle
+    2,                // CShuffleNXdlPerWavePerShuffle
+    S<1, 32, 1, 8>,   // CShuffleBlockTransferClusterLengths_MBlock_MPerBlock_NBlock_NPerBlock
+    8,                // CShuffleBlockTransferScalarPerVector_NPerBlock
+    BlkGemmPSched,    // BlkGemmPipeSched
+    BlkGemmPVer,      // BlkGemmPipelineVer
+    ADataType,        // ComputeTypeA
+    BDataType         // ComputeTypeB
+    >;
+#endif
+
+#if DEFAULT_INSTANCE == 2
+using DeviceOpInstance = ck::tensor_operation::device::DeviceGemmMX_Xdl_CShuffleV3_BPreshuffle<
+    ALayout,          // ALayout
+    BLayout,          // BLayout
+    CLayout,          // CLayout
+    ADataType,        // ADataType
+    XPackedDataType,  // AScaleDataType
+    BDataType,        // BDataType
+    XPackedDataType,  // BScaleDataType
+    CDataType,        // CDataType
+    AccDataType,      // GemmAccDataType
+    CShuffleDataType, // CShuffleDataType
+    AElementOp,       // AElementwiseOperation
+    BElementOp,       // BElementwiseOperation
+    CElementOp,       // CElementwiseOperation
+    GemmSpec,         // GemmSpec
+    ScaleBlockSize,   // ScaleBlockSize: Scaling block size
+    256,              // BlockSize: Thread block size
+    128,              // MPerBlock
+    128,              // NPerBlock
+    KPerBlock,        // KPerBlock
+    16,               // AK1
+    16,               // BK1
+    16,               // MPerXDL
+    16,               // NPerXDL
+    8,                // MXdlPerWave
+    2,                // NXdlPerWave
+    S<8, 32, 1>,      // ABlockTransferThreadClusterLengths_AK0_M_AK1
+    S<1, 0, 2>,       // ABlockTransferThreadClusterArrangeOrder
+    S<1, 0, 2>,       // ABlockTransferSrcAccessOrder
+    2,                // ABlockTransferSrcVectorDim
+    16,               // ABlockTransferSrcScalarPerVector
+    16,               // ABlockTransferDstScalarPerVector_AK1
+    true,             // ABlockLdsExtraM
+    S<8, 32, 1>,      // BBlockTransferThreadClusterLengths_BK0_N_BK1
+    S<1, 0, 2>,       // BBlockTransferThreadClusterArrangeOrder
+    S<1, 0, 2>,       // BBlockTransferSrcAccessOrder
+    2,                // BBlockTransferSrcVectorDim
+    16,               // BBlockTransferSrcScalarPerVector
+    16,               // BBlockTransferDstScalarPerVector_BK1
+    true,             // BBlockLdsExtraN
+    2,                // CShuffleMXdlPerWavePerShuffle
+    2,                // CShuffleNXdlPerWavePerShuffle
+    S<1, 32, 1, 8>,   // CShuffleBlockTransferClusterLengths_MBlock_MPerBlock_NBlock_NPerBlock
+    8,                // CShuffleBlockTransferScalarPerVector_NPerBlock
+    BlkGemmPSched,    // BlkGemmPipeSched
+    BlkGemmPVer,      // BlkGemmPipelineVer
+    ADataType,        // ComputeTypeA
+    BDataType         // ComputeTypeB
+    >;
+
+#endif
 
 int main(int argc, char* argv[])
 {

@@ -971,7 +971,7 @@ struct BlockwiseGemmXdlops_pipeline_v3_mx_bprehuffle<BlockGemmPipelineScheduler:
                                             b_thread_bufs[I0][Number<b_thread_desc_.CalculateOffset(
                                                 make_tuple(n0, I0, inxdl, kxdl, ik))>{}];
                                     });
-
+#if 0
 #if defined(__gfx950__)
                                     printf("Tid: %02d, ik, im, in = %d, %d, %d\n"
                                            "Tid: %02d, A %02x %02x %02x %02x %02x %02x %02x %02x\n"
@@ -1021,6 +1021,7 @@ struct BlockwiseGemmXdlops_pipeline_v3_mx_bprehuffle<BlockGemmPipelineScheduler:
                                            *reinterpret_cast<uint8_t*>(&(b_thread_vec.template AsType<ComputeTypeA>()(Number<8+6>{}))),
                                            *reinterpret_cast<uint8_t*>(&(b_thread_vec.template AsType<ComputeTypeA>()(Number<8+7>{})))
                                             );
+#endif
 #endif
 
                                     using mfma_input_type_a =

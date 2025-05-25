@@ -270,8 +270,8 @@ bool run_mx_gemm(const ProblemSizeSplitK& problem_size, const ExecutionConfig& c
     case 0: // Initializations for development and debugging
         ck::utils::FillConstant<ADataType>{a_data_element(1.0f)}(a_m_k);
         ck::utils::FillConstant<XDataType>{ck::type_convert<XDataType>(1.0f)}(a_m_k_scale);
-        ck::utils::FillConstant<BDataType>{b_data_element(2.0f)}(b_k_n);
-        ck::utils::FillConstant<XDataType>{ck::type_convert<XDataType>(0.5f)}(b_k_n_scale);
+        ck::utils::FillConstant<BDataType>{b_data_element(1.0f)}(b_k_n);
+        ck::utils::FillConstant<XDataType>{ck::type_convert<XDataType>(1.0f)}(b_k_n_scale);
         if(config.verbosity > 0)
         {
             std::cout << "Init A = {1}" << std::endl;

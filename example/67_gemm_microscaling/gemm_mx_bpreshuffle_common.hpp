@@ -362,6 +362,7 @@ bool run_mx_gemm(const ProblemSizeSplitK& problem_size, const ExecutionConfig& c
     int NPerXdl = 16; // Fixed 16
     preShuffleBuffer(b_k_n.mData.data(), b_preshuffled.mData.data(), N, K, NPerXdl);
 #endif
+#if 0
     printf("b:\n");
     for(ck::index_t i = 0; i < N; i++)
     {
@@ -375,6 +376,7 @@ bool run_mx_gemm(const ProblemSizeSplitK& problem_size, const ExecutionConfig& c
         }
         printf("\n");
     }
+#endif
     // printf("b_scale:\n");
     // for(ck::index_t i = 0; i < N; i++)
     // {
