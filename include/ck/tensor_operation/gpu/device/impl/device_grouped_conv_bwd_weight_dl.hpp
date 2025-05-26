@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Copyright (c) 2018-2024, Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (c) 2018-2025, Advanced Micro Devices, Inc. All rights reserved.
 
 #pragma once
 
@@ -1207,6 +1207,16 @@ struct DeviceGroupedConvBwdWeight_Dl : public DeviceGroupedConvBwdWeight<NDimSpa
     std::unique_ptr<BaseInvoker> MakeInvokerPointer() override
     {
         return std::make_unique<Invoker>(Invoker{});
+    }
+
+    std::size_t GetGridSize(const Argument& arg) const
+    {
+        return arg.block_2_ctile_map_.CalculateGridSize(arg.c_grid_desc_m_n_) * arg.Conv_G_;
+    }
+
+    std::size_t GetGridSize(const BaseArgument* p_arg) const override
+    {
+        return GetGridSize(*dynamic_cast<const Argument*>(p_arg));
     }
 
     std::string GetTypeString() const override

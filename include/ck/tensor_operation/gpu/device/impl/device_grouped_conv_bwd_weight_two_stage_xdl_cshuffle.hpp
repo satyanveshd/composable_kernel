@@ -66,6 +66,7 @@ __global__ void
     const long_index_t e_batch_offset = amd_wave_read_first_lane(
         static_cast<long_index_t>(compute_ptr_offset_of_batch.GetEPtrOffset(g_idx)));
 
+    // GridwiseGemm::GetSharedMemoryNumberOfByte2();
     __shared__ char p_shared[GridwiseGemm::GetSharedMemoryNumberOfByte()];
 
     GridwiseGemm::template Run<AGridDesc_AK0_M_K1,
@@ -398,7 +399,7 @@ struct DeviceGroupedConvBwdWeightTwoStage_Xdl_CShuffle
                                      ADataType,
                                      BDataType,
                                      AccDataType,
-                                     AccDataType,
+                                     EDataType,
                                      AccDataType,
                                      AElementwiseOperation,
                                      BElementwiseOperation,
@@ -851,6 +852,19 @@ struct DeviceGroupedConvBwdWeightTwoStage_Xdl_CShuffle
                 }
                 else
                 {
+
+                    int occupancy, num_cu;
+                    hip_check_error(
+                        hipOccupancyMaxActiveBlocksPerMultiprocessor(&occupancy, kernel, BlockSize, 0));
+
+                    hipDeviceProp_t dev_prop;
+                    hipDevice_t dev;
+                    hip_check_error(hipGetDevice(&dev));
+                    hip_check_error(hipGetDeviceProperties(&dev_prop, dev));
+                    num_cu = dev_prop.multiProcessorCount;
+
+                    std::cout << "LOCUPANCY" << occupancy << " " <<num_cu<<  std::endl;
+
                     ave_time += launch_and_time_kernel_with_preprocess(
                         stream_config,
                         clear_workspace,
@@ -1423,71 +1437,71 @@ struct DeviceGroupedConvBwdWeightTwoStage_Xdl_CShuffle
         float Run(const Argument& arg, const StreamConfig& stream_config = StreamConfig{})
         {
             float avg_time                 = 0.f;
-            auto launch_elementwise_kernel = [&]() {
-                const AccDataType* p_c_grid = type_convert<const AccDataType*>(arg.p_workspace_);
+            // auto launch_elementwise_kernel = [&]() {
+            //     const AccDataType* p_c_grid = type_convert<const AccDataType*>(arg.p_workspace_);
 
-                std::array<index_t, I1> in_out_batch_strides = {
-                    static_cast<index_t>(arg.compute_ptr_offset_of_batch_.BatchStrideC_)};
+            //     std::array<index_t, I1> in_out_batch_strides = {
+            //         static_cast<index_t>(arg.compute_ptr_offset_of_batch_.BatchStrideC_)};
 
-                if constexpr(is_NGCHW_GKCYX_NGKHW<InLayout, WeiLayout, OutLayout>() ||
-                             is_NGCDHW_GKCZYX_NGKDHW<InLayout, WeiLayout, OutLayout>())
-                {
-                    const index_t grid_size = arg.elementwise_block_2_ctile_map_.CalculateGridSize(
-                        arg.e_in_transpose_desc_);
+            //     if constexpr(is_NGCHW_GKCYX_NGKHW<InLayout, WeiLayout, OutLayout>() ||
+            //                  is_NGCDHW_GKCZYX_NGKDHW<InLayout, WeiLayout, OutLayout>())
+            //     {
+            //         const index_t grid_size = arg.elementwise_block_2_ctile_map_.CalculateGridSize(
+            //             arg.e_in_transpose_desc_);
 
-                    const auto kernel = kernel_elementwise<GridwiseElementwiseWeightTransposeCast,
-                                                           ck::Tuple<GKYXCTransposeDescType>,
-                                                           ck::Tuple<GKCYXTransposeDescType>,
-                                                           ck::Tuple<const AccDataType*>,
-                                                           ck::Tuple<EDataType*>,
-                                                           Block2TileMapElementwise,
-                                                           CDEElementwiseOperation>;
+            //         const auto kernel = kernel_elementwise<GridwiseElementwiseWeightTransposeCast,
+            //                                                ck::Tuple<GKYXCTransposeDescType>,
+            //                                                ck::Tuple<GKCYXTransposeDescType>,
+            //                                                ck::Tuple<const AccDataType*>,
+            //                                                ck::Tuple<EDataType*>,
+            //                                                Block2TileMapElementwise,
+            //                                                CDEElementwiseOperation>;
 
-                    return launch_and_time_kernel(stream_config,
-                                                  kernel,
-                                                  dim3(grid_size),
-                                                  dim3(BlockSize),
-                                                  0,
-                                                  make_tuple(arg.e_in_transpose_desc_),
-                                                  make_tuple(arg.e_out_transpose_desc_),
-                                                  make_tuple(p_c_grid),
-                                                  make_tuple(arg.p_e_grid_),
-                                                  arg.elementwise_block_2_ctile_map_,
-                                                  arg.cde_element_op_);
-                }
-                else
-                {
-                    const index_t grid_size = arg.elementwise_block_2_ctile_map_.CalculateGridSize(
-                                                  arg.ce_elementwise_grid_desc_m_n_) *
-                                              arg.Conv_G_;
+            //         return launch_and_time_kernel(stream_config,
+            //                                       kernel,
+            //                                       dim3(grid_size),
+            //                                       dim3(BlockSize),
+            //                                       0,
+            //                                       make_tuple(arg.e_in_transpose_desc_),
+            //                                       make_tuple(arg.e_out_transpose_desc_),
+            //                                       make_tuple(p_c_grid),
+            //                                       make_tuple(arg.p_e_grid_),
+            //                                       arg.elementwise_block_2_ctile_map_,
+            //                                       arg.cde_element_op_);
+            //     }
+            //     else
+            //     {
+            //         const index_t grid_size = arg.elementwise_block_2_ctile_map_.CalculateGridSize(
+            //                                       arg.ce_elementwise_grid_desc_m_n_) *
+            //                                   arg.Conv_G_;
 
-                    const auto kernel =
-                        kernel_batched_elementwise<GridwiseElementwiseCast,
-                                                   ck::Tuple<CElementwiseGridDesc_M_N>,
-                                                   ck::Tuple<CElementwiseGridDesc_M_N>,
-                                                   ck::Tuple<const AccDataType*>,
-                                                   ck::Tuple<EDataType*>,
-                                                   Block2TileMapElementwise,
-                                                   CDEElementwiseOperation,
-                                                   I1,
-                                                   I1>;
+            //         const auto kernel =
+            //             kernel_batched_elementwise<GridwiseElementwiseCast,
+            //                                        ck::Tuple<CElementwiseGridDesc_M_N>,
+            //                                        ck::Tuple<CElementwiseGridDesc_M_N>,
+            //                                        ck::Tuple<const AccDataType*>,
+            //                                        ck::Tuple<EDataType*>,
+            //                                        Block2TileMapElementwise,
+            //                                        CDEElementwiseOperation,
+            //                                        I1,
+            //                                        I1>;
 
-                    return launch_and_time_kernel(stream_config,
-                                                  kernel,
-                                                  dim3(grid_size),
-                                                  dim3(BlockSize),
-                                                  0,
-                                                  make_tuple(arg.ce_elementwise_grid_desc_m_n_),
-                                                  make_tuple(arg.ce_elementwise_grid_desc_m_n_),
-                                                  make_tuple(p_c_grid),
-                                                  make_tuple(arg.p_e_grid_),
-                                                  arg.elementwise_block_2_ctile_map_,
-                                                  arg.cde_element_op_,
-                                                  arg.Conv_G_,
-                                                  in_out_batch_strides,
-                                                  in_out_batch_strides);
-                }
-            };
+            //         return launch_and_time_kernel(stream_config,
+            //                                       kernel,
+            //                                       dim3(grid_size),
+            //                                       dim3(BlockSize),
+            //                                       0,
+            //                                       make_tuple(arg.ce_elementwise_grid_desc_m_n_),
+            //                                       make_tuple(arg.ce_elementwise_grid_desc_m_n_),
+            //                                       make_tuple(p_c_grid),
+            //                                       make_tuple(arg.p_e_grid_),
+            //                                       arg.elementwise_block_2_ctile_map_,
+            //                                       arg.cde_element_op_,
+            //                                       arg.Conv_G_,
+            //                                       in_out_batch_strides,
+            //                                       in_out_batch_strides);
+            //     }
+            // };
 
             if constexpr(is_NGCHW_NGKHW<InLayout, WeiLayout, OutLayout>() ||
                          is_NGCDHW_NGKDHW<InLayout, WeiLayout, OutLayout>())
@@ -1541,7 +1555,7 @@ struct DeviceGroupedConvBwdWeightTwoStage_Xdl_CShuffle
             }
 
             avg_time += RunGemmV3(arg, stream_config);
-            avg_time += launch_elementwise_kernel();
+            // avg_time += launch_elementwise_kernel();
             return avg_time;
         }
 
@@ -1875,6 +1889,34 @@ struct DeviceGroupedConvBwdWeightTwoStage_Xdl_CShuffle
             throw std::runtime_error(
                 "The argument pointer is not an object of "
                 "DeviceGroupedConvBwdWeightTwoStage_Xdl_CShuffle::Argument structure!");
+    }
+
+    std::size_t GetGridSize(const Argument& arg) const
+    {
+
+        if(arg.Conv_G_ % NumGroupsToMerge != 0)
+        {
+            return 1;
+        }
+
+        const index_t GemmM = arg.a_grid_desc_k0_m_k1_.GetLength(I1);
+        const index_t GemmN = arg.b_grid_desc_k0_n_k1_.GetLength(I1);
+        const index_t GemmK =
+            arg.a_grid_desc_k0_m_k1_.GetLength(I0) * arg.a_grid_desc_k0_m_k1_.GetLength(I2);
+
+        // nullptr for output, will be set after workspace set
+        typename GridwiseGemm::Argument gemm_arg{
+            nullptr, nullptr, nullptr, GemmM, GemmN, GemmK, I0, I0, I0, 1};
+
+        index_t gdx, gdy, gdz;
+        std::tie(gdx, gdy, gdz) = GridwiseGemm::CalculateGridSize(
+            gemm_arg.M, gemm_arg.N, 1, arg.Conv_G_ / NumGroupsToMerge);
+        return gdx * gdy * gdz;
+    }
+
+    std::size_t GetGridSize(const BaseArgument* p_arg) const override
+    {
+        return GetGridSize(*dynamic_cast<const Argument*>(p_arg));
     }
 
     void SetWorkSpacePointer(BaseArgument* p_arg,

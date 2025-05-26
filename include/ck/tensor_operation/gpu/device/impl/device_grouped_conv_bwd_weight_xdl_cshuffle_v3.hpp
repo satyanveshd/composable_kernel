@@ -1327,6 +1327,28 @@ struct DeviceGroupedConvBwdWeight_Xdl_CShuffleV3
                                           split_k);
     }
 
+    std::size_t GetGridSize(const Argument& arg) const
+    {
+        const index_t GemmM = arg.a_grid_desc_kbatch_k0_m_k1_.GetLength(I1);
+        const index_t GemmN = arg.b_grid_desc_kbatch_k0_n_k1_.GetLength(I1);
+        const index_t GemmK = arg.a_grid_desc_kbatch_k0_m_k1_.GetLength(I0) *
+                              arg.a_grid_desc_kbatch_k0_m_k1_.GetLength(I2);
+
+        // nullptr for output, will be set after workspace set
+        typename GridwiseGemm::Argument gemm_arg{
+            nullptr, nullptr, nullptr, GemmM, GemmN, GemmK, I0, I0, I0, 1};
+
+        index_t gdx, gdy, gdz;
+        std::tie(gdx, gdy, gdz) =
+            GridwiseGemm::CalculateGridSize(gemm_arg.M, gemm_arg.N, 1, arg.Conv_G_);
+        return gdx * gdy * gdz;
+    }
+
+    std::size_t GetGridSize(const BaseArgument* p_arg) const override
+    {
+        return GetGridSize(*dynamic_cast<const Argument*>(p_arg));
+    }
+
     std::unique_ptr<BaseInvoker> MakeInvokerPointer() override
     {
         return std::make_unique<Invoker>(Invoker{});

@@ -588,6 +588,38 @@ struct GridwiseGemm_xdl_cshuffle_v3
                                 NXdlPerWave,
                                 KPack>())>;
 
+
+    __device__ static index_t GetSharedMemoryNumberOfByte2()
+    {
+        // LDS allocation for A and B: be careful of alignment
+        constexpr auto a_block_desc_ak0_m_ak1 = GetABlockDescriptor_AK0PerBlock_MPerBlock_AK1();
+        constexpr auto b_block_desc_bk0_n_bk1 = GetBBlockDescriptor_BK0PerBlock_NPerBlock_BK1();
+
+        // lds max alignment
+        constexpr auto max_lds_align = math::lcm(AK1Number, BK1Number);
+
+        constexpr auto a_block_space_size_aligned = math::integer_least_multiple(
+            a_block_desc_ak0_m_ak1.GetElementSpaceSize(), max_lds_align);
+
+        constexpr auto b_block_space_size_aligned = math::integer_least_multiple(
+            b_block_desc_bk0_n_bk1.GetElementSpaceSize(), max_lds_align);
+
+        // LDS allocation for C shuffle in LDS
+        constexpr auto c_shuffle_block_desc_mblock_mperblock_nblock_nperblock =
+            GetCShuffleBlockDescriptor_MBlock_MPerBlock_NBlock_NPerBlock();
+
+        constexpr auto c_block_size =
+            c_shuffle_block_desc_mblock_mperblock_nblock_nperblock.GetElementSpaceSize();
+        if(threadIdx.x==0 && blockIdx.x == 0)
+        {
+            printf("%lu %lu %lu\n", a_block_space_size_aligned * sizeof(ADataType) , b_block_space_size_aligned * sizeof(BDataType), c_block_size * sizeof(CShuffleDataType));
+        }
+
+        return math::max((a_block_space_size_aligned * sizeof(ADataType) +
+                          b_block_space_size_aligned * sizeof(BDataType)),
+                         c_block_size * sizeof(CShuffleDataType));
+    }
+
     __device__ static constexpr index_t GetSharedMemoryNumberOfByte()
     {
         // LDS allocation for A and B: be careful of alignment
@@ -609,6 +641,7 @@ struct GridwiseGemm_xdl_cshuffle_v3
 
         constexpr auto c_block_size =
             c_shuffle_block_desc_mblock_mperblock_nblock_nperblock.GetElementSpaceSize();
+
 
         return math::max((a_block_space_size_aligned * sizeof(ADataType) +
                           b_block_space_size_aligned * sizeof(BDataType)),

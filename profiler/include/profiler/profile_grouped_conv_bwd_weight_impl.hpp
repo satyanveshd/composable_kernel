@@ -24,6 +24,8 @@
 #include "ck/library/utility/convolution_host_tensor_descriptor_helper.hpp"
 #include "ck/library/reference_tensor_operation/cpu/reference_conv_bwd_weight.hpp"
 
+#include "ck/host_utility/hip_check_error.hpp"
+
 namespace ck {
 namespace profiler {
 
@@ -171,15 +173,51 @@ bool profile_grouped_conv_bwd_weight_impl(int do_verification,
     range_copy(conv_param.input_left_pads_, begin(input_left_pads));
     range_copy(conv_param.input_right_pads_, begin(input_right_pads));
 
-    std::vector<ck::index_t> split_k_list = {1, 2, 4, 8, 16, 32, 64, 128};
-
-    if(split_k > 0)
-    {
-        split_k_list = {split_k};
-    }
+    std::vector<ck::index_t> split_k_list;
+    hipDeviceProp_t dev_prop;
+    hipDevice_t dev;
+    hip_check_error(hipGetDevice(&dev));
+    hip_check_error(hipGetDeviceProperties(&dev_prop, dev));
 
     for(auto& op_ptr : op_ptrs)
     {
+        if(split_k > 0)
+        {
+            split_k_list = {split_k};
+        }
+        else
+        {
+            auto argument_ptr_splitk1 = op_ptr->MakeArgumentPointer(
+                static_cast<InDataType*>(in_device_buf.GetDeviceBuffer()),
+                static_cast<WeiDataType*>(wei_device_buf.GetDeviceBuffer()),
+                static_cast<OutDataType*>(out_device_buf.GetDeviceBuffer()),
+                input_lengths,
+                input_strides,
+                filter_lengths,
+                weights_strides,
+                output_lengths,
+                output_strides,
+                conv_filter_strides,
+                conv_filter_dilations,
+                input_left_pads,
+                input_right_pads,
+                in_element_op,
+                wei_element_op,
+                out_element_op,
+                1);
+
+            split_k_list           = {1, 2, 4, 8, 16, 32, 64, 128};
+            int gridsize           = op_ptr->GetGridSize(argument_ptr_splitk1.get());
+            int utilization_factor = dev_prop.multiProcessorCount / gridsize;
+            if(utilization_factor > 0)
+            {
+                // Add split K values for possible occupancy 1,2 and 3
+                split_k_list.push_back(1 * utilization_factor);
+                split_k_list.push_back(2 * utilization_factor);
+                split_k_list.push_back(3 * utilization_factor);
+            }
+        }
+
         for(std::size_t split_k_id = 0; split_k_id < split_k_list.size(); split_k_id++)
         {
             auto argument_ptr = op_ptr->MakeArgumentPointer(

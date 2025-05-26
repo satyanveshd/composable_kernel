@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Copyright (c) 2018-2023, Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (c) 2018-2025, Advanced Micro Devices, Inc. All rights reserved.
 
 #pragma once
 
@@ -44,7 +44,8 @@ struct DeviceGroupedConvBwdWeight : public BaseOperator
                         OutElementwiseOperation out_element_op,
                         ck::index_t split_k) = 0;
 
-    virtual std::unique_ptr<BaseInvoker> MakeInvokerPointer() = 0;
+    virtual std::unique_ptr<BaseInvoker> MakeInvokerPointer()  = 0;
+    virtual std::size_t GetGridSize(const BaseArgument*) const = 0;
 };
 
 } // namespace device

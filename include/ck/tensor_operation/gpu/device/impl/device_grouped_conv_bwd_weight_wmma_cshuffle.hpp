@@ -834,6 +834,16 @@ struct DeviceGroupedConvBwdWeight_Wmma_CShuffle
                                           split_k);
     }
 
+    std::size_t GetGridSize(const Argument& arg) const
+    {
+        return arg.block_2_ctile_map_.CalculateGridSize(arg.c_grid_desc_m_n_) * arg.Conv_G_;
+    }
+
+    std::size_t GetGridSize(const BaseArgument* p_arg) const override
+    {
+        return GetGridSize(*dynamic_cast<const Argument*>(p_arg));
+    }
+
     std::unique_ptr<BaseInvoker> MakeInvokerPointer() override
     {
         return std::make_unique<Invoker>(Invoker{});

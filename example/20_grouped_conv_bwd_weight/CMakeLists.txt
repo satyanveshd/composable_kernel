@@ -1,5 +1,11 @@
 add_custom_target(example_grouped_conv_bwd_weight)
+# set_source_files_properties(grouped_conv_bwd_weight_xdl_fp16.cpp PROPERTIES COMPILE_OPTIONS ";-mllvm;-greedy-reverse-local-assignment=1")
 add_example_executable(example_grouped_conv_bwd_weight_xdl_fp16 grouped_conv_bwd_weight_xdl_fp16.cpp)
+
+set(EXAMPLE_COMPILE_OPTIONS)
+list(APPEND EXAMPLE_COMPILE_OPTIONS -v --save-temps -fverbose-asm -Wno-gnu-line-marker)
+target_compile_options(example_grouped_conv_bwd_weight_xdl_fp16 PRIVATE ${EXAMPLE_COMPILE_OPTIONS})
+
 add_example_dependencies(example_grouped_conv_bwd_weight example_grouped_conv_bwd_weight_xdl_fp16)
 
 add_example_executable(example_grouped_conv_bwd_weight_xdl_bf16 grouped_conv_bwd_weight_xdl_bf16.cpp)

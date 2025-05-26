@@ -1112,6 +1112,16 @@ struct DeviceGroupedConvBwdWeight_Xdl_CShuffle
         return str.str();
     }
 
+    std::size_t GetGridSize(const Argument& arg) const
+    {
+        return arg.block_2_ctile_map_.CalculateGridSize(arg.c_grid_desc_m_n_) * arg.Conv_G_;
+    }
+
+    std::size_t GetGridSize(const BaseArgument* p_arg) const override
+    {
+        return GetGridSize(*dynamic_cast<const Argument*>(p_arg));
+    }
+
     size_t GetWorkSpaceSize(const BaseArgument* p_arg) const override
     {
         auto arg = dynamic_cast<const Argument*>(p_arg);
