@@ -11,10 +11,10 @@ namespace ck_tile {
 template <typename Problem, typename Policy>
 struct GemmPipelineAgBgCrImplBase
 {
-    using ADataType      = remove_cvref_t<typename Problem::ADataType>;
-    using BDataType      = remove_cvref_t<typename Problem::BDataType>;
-    using ALayout        = remove_cvref_t<typename Problem::ALayout>;
-    using BLayout        = remove_cvref_t<typename Problem::BLayout>;
+    using AsDataType     = remove_cvref_t<typename Problem::AsDataType>;
+    using BsDataType     = remove_cvref_t<typename Problem::BsDataType>;
+    using AsLayout       = remove_cvref_t<typename Problem::AsLayout>;
+    using BsLayout       = remove_cvref_t<typename Problem::BsLayout>;
     using BlockGemmShape = remove_cvref_t<typename Problem::BlockGemmShape>;
 
     static constexpr index_t MPerBlock = BlockGemmShape::kM;
@@ -51,51 +51,93 @@ struct GemmPipelineAgBgCrImplBase
     CK_TILE_DEVICE auto GetABLdsTensorViews(void* p_smem) const
     {
         // A tile in LDS
-        ADataType* __restrict__ p_a_lds = static_cast<ADataType*>(p_smem);
-        constexpr auto a_lds_block_desc = Policy::template MakeALdsBlockDescriptor<Problem>();
-        auto a_lds_block = make_tensor_view<address_space_enum::lds>(p_a_lds, a_lds_block_desc);
+        auto a_lds_block = generate_tuple(
+            [&](auto i) {
+                using ADataType = remove_cvref_t<std::tuple_element_t<i.value, AsDataType>>;
+                ADataType* __restrict__ p_a_lds = static_cast<ADataType*>(p_smem);
+                constexpr auto a_lds_block_desc =
+                    Policy::template MakeALdsBlockDescriptor<Problem>();
+                return make_tensor_view<address_space_enum::lds>(p_a_lds, a_lds_block_desc);
+            },
+            number<AsDataType::size()>{});
 
-        // TODO: LDS alignment should come from Policy!
-        constexpr index_t a_lds_block_space_size_aligned = integer_least_multiple(
-            sizeof(ADataType) * a_lds_block_desc.get_element_space_size(), 16);
+        auto b_lds_block = generate_tuple(
+            [&](auto i) {
+                using ADataType = remove_cvref_t<std::tuple_element_t<i.value, AsDataType>>;
+                constexpr auto a_lds_block_desc =
+                    Policy::template MakeALdsBlockDescriptor<Problem>();
+                // TODO: LDS alignment should come from Policy!
+                constexpr index_t a_lds_block_space_size_aligned = integer_least_multiple(
+                    sizeof(ADataType) * a_lds_block_desc.get_element_space_size(), 16);
 
-        // B tile in LDS
-        BDataType* __restrict__ p_b_lds = static_cast<BDataType*>(
-            static_cast<void*>(static_cast<char*>(p_smem) + a_lds_block_space_size_aligned));
-        constexpr auto b_lds_block_desc = Policy::template MakeBLdsBlockDescriptor<Problem>();
-        auto b_lds_block = make_tensor_view<address_space_enum::lds>(p_b_lds, b_lds_block_desc);
+                // B tile in LDS
+                using BDataType = remove_cvref_t<std::tuple_element_t<i.value, BsDataType>>;
+                BDataType* __restrict__ p_b_lds = static_cast<BDataType*>(static_cast<void*>(
+                    static_cast<char*>(p_smem) + a_lds_block_space_size_aligned));
+                constexpr auto b_lds_block_desc =
+                    Policy::template MakeBLdsBlockDescriptor<Problem>();
+                return make_tensor_view<address_space_enum::lds>(p_b_lds, b_lds_block_desc);
+            },
+            number<BsDataType::size()>{});
 
         return make_tuple(std::move(a_lds_block), std::move(b_lds_block));
     }
 
     template <typename ADramBlockWindowTmp, typename ALdsTensorView, typename ALdsLoadTileDistr>
-    CK_TILE_DEVICE constexpr auto GetAWindows(const ADramBlockWindowTmp& a_dram_block_window_tmp,
+    CK_TILE_DEVICE constexpr auto GetAWindows(ADramBlockWindowTmp& a_dram_block_window_tmp,
                                               const ALdsTensorView& a_lds_block_view,
                                               const ALdsLoadTileDistr&) const
     {
+        using ALayout               = remove_cvref_t<std::tuple_element_t<0, AsLayout>>;
         constexpr bool is_col_major = std::is_same_v<ALayout, tensor_layout::gemm::ColumnMajor>;
 
         using YPerTile = std::conditional_t<is_col_major, number<KPerBlock>, number<MPerBlock>>;
         using XPerTile = std::conditional_t<is_col_major, number<MPerBlock>, number<KPerBlock>>;
 
         // A DRAM tile window for load
-        auto a_copy_dram_window =
-            make_tile_window(a_dram_block_window_tmp.get_bottom_tensor_view(),
-                             make_tuple(YPerTile{}, XPerTile{}),
-                             a_dram_block_window_tmp.get_window_origin(),
-                             Policy::template MakeADramTileDistribution<Problem>());
+        auto a_copy_dram_window = generate_tuple(
+            [&](auto idx) {
+                return make_tile_window(
+                    a_dram_block_window_tmp[number<idx>{}].get_bottom_tensor_view(),
+                    make_tuple(YPerTile{}, XPerTile{}),
+                    a_dram_block_window_tmp[number<idx>{}].get_window_origin(),
+                    Policy::template MakeADramTileDistribution<Problem>());
+            },
+            number<ADramBlockWindowTmp::size()>{});
 
         // A LDS tile window for store
-        auto a_copy_lds_window = make_tile_window(
-            a_lds_block_view, make_tuple(number<MPerBlock>{}, number<KPerBlock>{}), {0, 0});
+        auto a_copy_lds_window =
+            make_tile_window(a_lds_block_view[number<0>{}],
+                             make_tuple(number<MPerBlock>{}, number<KPerBlock>{}),
+                             {0, 0});
 
         auto a_lds_gemm_window =
-            make_tile_window(a_lds_block_view,
+            make_tile_window(a_lds_block_view[number<0>{}],
                              make_tuple(number<MPerBlock>{}, number<KPerBlock>{}),
                              {0, 0},
                              ALdsLoadTileDistr{});
+        //((((((((((((((((((((()))))))))))))))))))))
+        using elemenet_wise_output_t = decltype(load_tile(make_tile_window(a_dram_block_window_tmp[number<0>{}].get_bottom_tensor_view(),
+                                make_tuple(YPerTile{}, XPerTile{}),
+                                a_dram_block_window_tmp[number<0>{}].get_window_origin(),
+                                Policy::template MakeADramTileDistribution<Problem>())));
+          elemenet_wise_output_t tt;                      
+        //using ADataType = remove_cvref_t<std::tuple_element_t<number<0>{}, AsDataType>>;
 
-        return make_tuple(std::move(a_copy_dram_window),
+        auto a_copy_dram_window_t =
+            generate_tuple([&]([[maybe_unused]] auto idx) { return load_tile(a_copy_dram_window[number<1>{}]); },
+                           number<ADramBlockWindowTmp::size()>{});
+
+        auto a_copy_dram_window_tuple = concat_tuple_of_reference(
+            tie(tt, tt),
+            generate_tie(
+                [&](auto idx) -> auto& { return a_copy_dram_window_t[idx]; },
+                number<ADramBlockWindowTmp::size()>{}));
+
+        tile_elementwise_in_out_unpack_tuple(typename Problem::AElementwise{}, a_copy_dram_window_tuple);
+        //store_tile(a_copy_dram_window[number<0>{}], )
+        //((((((((((((((((((((()))))))))))))))))))))
+        return make_tuple(std::move(tt),
                           std::move(a_copy_lds_window),
                           std::move(a_lds_gemm_window));
     }
@@ -105,25 +147,28 @@ struct GemmPipelineAgBgCrImplBase
                                               const BLdsTensorView& b_lds_block_view,
                                               const BLdsLoadTileDistr&) const
     {
+        using BLayout               = remove_cvref_t<std::tuple_element_t<0, BsLayout>>;
         constexpr bool is_row_major = std::is_same_v<BLayout, tensor_layout::gemm::RowMajor>;
 
         using YPerTile = std::conditional_t<is_row_major, number<KPerBlock>, number<NPerBlock>>;
         using XPerTile = std::conditional_t<is_row_major, number<NPerBlock>, number<KPerBlock>>;
 
         auto b_copy_dram_window =
-            make_tile_window(b_dram_block_window_tmp.get_bottom_tensor_view(),
+            make_tile_window(b_dram_block_window_tmp[number<0>{}].get_bottom_tensor_view(),
                              make_tuple(YPerTile{}, XPerTile{}),
-                             b_dram_block_window_tmp.get_window_origin(),
+                             b_dram_block_window_tmp[number<0>{}].get_window_origin(),
                              Policy::template MakeBDramTileDistribution<Problem>());
 
         // TODO: Do we really need those two tile windows???
         // They're exactly same...
         // B LDS tile window for store
-        auto b_copy_lds_window = make_tile_window(
-            b_lds_block_view, make_tuple(number<NPerBlock>{}, number<KPerBlock>{}), {0, 0});
+        auto b_copy_lds_window =
+            make_tile_window(b_lds_block_view[number<0>{}],
+                             make_tuple(number<NPerBlock>{}, number<KPerBlock>{}),
+                             {0, 0});
 
         auto b_lds_gemm_window =
-            make_tile_window(b_lds_block_view,
+            make_tile_window(b_lds_block_view[number<0>{}],
                              make_tuple(number<NPerBlock>{}, number<KPerBlock>{}),
                              {0, 0},
                              BLdsLoadTileDistr{});
