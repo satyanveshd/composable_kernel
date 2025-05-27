@@ -109,4 +109,33 @@ CK_TILE_HOST_DEVICE PY c_style_pointer_cast(PX p_x)
 #pragma clang diagnostic pop
 }
 
+template <typename CompareTo, typename... Rest>
+struct is_any_of : std::false_type
+{
+};
+
+template <typename CompareTo, typename FirstType>
+struct is_any_of<CompareTo, FirstType> : std::is_same<CompareTo, FirstType>
+{
+};
+
+template <typename CompareTo, typename FirstType, typename... Rest>
+struct is_any_of<CompareTo, FirstType, Rest...>
+    : std::integral_constant<bool,
+                             std::is_same<CompareTo, FirstType>::value ||
+                                 is_any_of<CompareTo, Rest...>::value>
+{
+};
+
+// Helper to check if a type is a specialization of a given template
+template <typename Test, template <typename...> class RefTemplate>
+struct is_specialization_of : std::false_type
+{
+};
+
+template <template <typename...> class RefTemplate, typename... Args>
+struct is_specialization_of<RefTemplate<Args...>, RefTemplate> : std::true_type
+{
+};
+
 } // namespace ck_tile
