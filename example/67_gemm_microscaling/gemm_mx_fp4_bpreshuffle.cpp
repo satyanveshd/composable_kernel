@@ -31,7 +31,7 @@ constexpr auto GemmSpec      = ck::tensor_operation::device::GemmSpecialization:
 constexpr auto BlkGemmPSched = ck::BlockGemmPipelineScheduler::Intrawave;
 constexpr auto BlkGemmPVer   = ck::BlockGemmPipelineVersion::v3;
 
-#define DEFAULT_INSTANCE 2
+#define DEFAULT_INSTANCE 1
 // AB DataType: f4x2_pk_t
 // Mathmatically, all numbers are represented as f4x2.
 #if DEFAULT_INSTANCE == 0

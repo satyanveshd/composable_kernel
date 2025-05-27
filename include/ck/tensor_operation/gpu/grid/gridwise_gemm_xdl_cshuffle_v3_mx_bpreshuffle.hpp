@@ -674,6 +674,7 @@ struct GridwiseGemmMX_xdl_cshuffle_v3_bpreshuffle
               BN0Shuffled{CalculateBN0Shuffled(N_)},
               BK0Shuffled{CalculateBK0Shuffled(K_)}
         {
+            printf("N: %d, K: %d, BN0Shuffled: %d, BK0Shuffled: %d\n", N_, K_, BN0Shuffled, BK0Shuffled);
         }
 
         __host__ void Print() const

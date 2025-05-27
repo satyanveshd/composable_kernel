@@ -347,7 +347,7 @@ struct BlockwiseGemmXdlops_pipeline_v3_mx_bprehuffle<BlockGemmPipelineScheduler:
         auto a_thread_buf = make_static_buffer<AddressSpaceEnum::Vgpr, ComputeTypeA>(
             a_thread_desc_.GetElementSpaceSize());
         auto b_thread_buf = make_static_buffer<AddressSpaceEnum::Vgpr, ComputeTypeB>(
-            b_thread_desc_.GetElementSpaceSize());
+            b_block_desc.GetElementSpaceSize());
         StaticallyIndexedArray<decltype(b_thread_buf), Number<2>{}> b_thread_bufs;
         constexpr auto b_block_origin_idx = make_tuple(I0, I0, I0, I0, I0);
 
@@ -469,7 +469,7 @@ struct BlockwiseGemmXdlops_pipeline_v3_mx_bprehuffle<BlockGemmPipelineScheduler:
                     //block_sync_lds();
                     //a_blockwise_copy.Run(
                     //    a_grid_desc, a_grid_buf, a_block_desc, a_block_bufs(scale_comp_buf));
-
+       
                     // Prefetch a_scales
                     static_for<0, MRepeat / MXdlPack, 1>{}([&](auto m0) {
                         static_for<0, KRepeat / KXdlPack, 1>{}([&](auto k0) {
@@ -490,7 +490,7 @@ struct BlockwiseGemmXdlops_pipeline_v3_mx_bprehuffle<BlockGemmPipelineScheduler:
                     a_scale_thread_copy.MoveSrcSliceWindow(
                         a_scale_grid_desc,
                         make_multi_index(-MWaves * MRepeat / MXdlPack, KRepeat / KXdlPack, 0));
-
+    
                     // Prefetch b_scales
                     static_for<0, NRepeat / NXdlPack, 1>{}([&](auto n0) {
                         static_for<0, KRepeat / KXdlPack, 1>{}([&](auto k0) {
@@ -506,7 +506,7 @@ struct BlockwiseGemmXdlops_pipeline_v3_mx_bprehuffle<BlockGemmPipelineScheduler:
                         b_scale_thread_copy.MoveSrcSliceWindow(
                             b_scale_grid_desc, make_multi_index(NWaves, -KRepeat / KXdlPack, 0));
                     });
-
+        
                     // restore col id and advance to the next set of scales
                     // NWaves * NPerXDL * NRepeat == NPerBlock
                     b_scale_thread_copy.MoveSrcSliceWindow(
@@ -520,8 +520,12 @@ struct BlockwiseGemmXdlops_pipeline_v3_mx_bprehuffle<BlockGemmPipelineScheduler:
                         if constexpr(m0.value == SwitchM)
                         {
                             block_sync_lds();
-                            a_blockwise_copy.Run(a_grid_desc, a_grid_buf, a_block_desc, a_block_bufs(scale_comp_buf));
+                            a_blockwise_copy.Run(a_grid_desc,
+                                                 a_grid_buf,
+                                                 a_block_desc,
+                                                 a_block_bufs(scale_comp_buf));
                             a_blockwise_copy.MoveSrcSliceWindow(a_grid_desc, a_block_copy_step);
+                            __builtin_amdgcn_s_waitcnt(3952);
                         }
 
                         constexpr auto lds_buf =
@@ -574,7 +578,7 @@ struct BlockwiseGemmXdlops_pipeline_v3_mx_bprehuffle<BlockGemmPipelineScheduler:
                                                            2, I0, imxdl, kxdl, ik))>{}];
                                                 b_thread_vec.template AsType<ComputeTypeB>()(ik) =
                                                     b_thread_bufs[scale_comp_buf][Number<
-                                                        b_thread_desc_.CalculateOffset(make_tuple(
+                                                        BBlockDesc{}.CalculateOffset(make_tuple(
                                                             n0, I0, inxdl, kxdl, ik))>{}];
                                             });
 
@@ -740,7 +744,7 @@ struct BlockwiseGemmXdlops_pipeline_v3_mx_bprehuffle<BlockGemmPipelineScheduler:
                                             a_thread_buf[Number<a_thread_desc_.CalculateOffset(
                                                 make_tuple(m0 % 2, I0, imxdl, kxdl, ik))>{}];
                                         b_thread_vec.template AsType<ComputeTypeB>()(ik) =
-                                            b_thread_bufs[I0][Number<b_thread_desc_.CalculateOffset(
+                                            b_thread_bufs[I0][Number<BBlockDesc{}.CalculateOffset(
                                                 make_tuple(n0, I0, inxdl, kxdl, ik))>{}];
                                     });
 
@@ -855,7 +859,7 @@ struct BlockwiseGemmXdlops_pipeline_v3_mx_bprehuffle<BlockGemmPipelineScheduler:
                                             a_thread_buf[Number<a_thread_desc_.CalculateOffset(
                                                 make_tuple((m0 + HotloopLocalBufSwitch) % 2, I0, imxdl, kxdl, ik))>{}];
                                         b_thread_vec.template AsType<ComputeTypeB>()(ik) =
-                                            b_thread_bufs[I1][Number<b_thread_desc_.CalculateOffset(
+                                            b_thread_bufs[I1][Number<BBlockDesc{}.CalculateOffset(
                                                 make_tuple(n0, I0, inxdl, kxdl, ik))>{}];
                                     });
 
@@ -969,7 +973,7 @@ struct BlockwiseGemmXdlops_pipeline_v3_mx_bprehuffle<BlockGemmPipelineScheduler:
                                             a_thread_buf[Number<a_thread_desc_.CalculateOffset(
                                                 make_tuple(m0%2, I0, imxdl, kxdl, ik))>{}];
                                         b_thread_vec.template AsType<ComputeTypeB>()(ik) =
-                                            b_thread_bufs[I0][Number<b_thread_desc_.CalculateOffset(
+                                            b_thread_bufs[I0][Number<BBlockDesc{}.CalculateOffset(
                                                 make_tuple(n0, I0, inxdl, kxdl, ik))>{}];
                                     });
 #if 0
@@ -1139,8 +1143,8 @@ struct BlockwiseGemmXdlops_pipeline_v3_mx_bprehuffle<BlockGemmPipelineScheduler:
     protected:
     // using Base::a_thread_copy_;
     // using Base::a_thread_desc_;
-    using Base::b_thread_copy_;
-    using Base::b_thread_desc_;
+    //using Base::b_thread_copy_;
+    //using Base::b_thread_desc_;
     using Base::c_thread_desc_;
 };
 
