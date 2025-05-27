@@ -19,11 +19,11 @@
 #define CK_TILE_PIPELINE_DEFAULT CK_TILE_PIPELINE_COMPUTE
 #endif
 
-#if(CK_TILE_PIPELINE_DEFAULT == CK_TILE_PIPELINE_MEMORY)
+#if (CK_TILE_PIPELINE_DEFAULT == CK_TILE_PIPELINE_MEMORY)
 #define GEMM_PIPELINE ck_tile::GemmPipelineAgBgCrMem
 #define UNIVERSAL_GEMM_PIPELINE ck_tile::BaseGemmPipelineAgBgCrMem
 #define GEMM_PIPELINE_SCHEDULER ck_tile::GemmPipelineScheduler::Interwave
-#elif(CK_TILE_PIPELINE_DEFAULT == CK_TILE_PIPELINE_COMPUTE)
+#elif (CK_TILE_PIPELINE_DEFAULT == CK_TILE_PIPELINE_COMPUTE)
 #define GEMM_PIPELINE ck_tile::GemmPipelineAgBgCrCompV3
 #define UNIVERSAL_GEMM_PIPELINE ck_tile::BaseGemmPipelineAgBgCrCompV3
 #define GEMM_PIPELINE_SCHEDULER ck_tile::GemmPipelineScheduler::Intrawave
@@ -31,7 +31,46 @@
 #error "unsupported CK_TILE_PIPELINE_DEFAULT value"
 #endif
 
-template <typename ADataType, typename BDataType = ADataType, typename CDataType = ADataType>
+template <typename DataType>
+struct GemmConfig
+{
+    static constexpr ck_tile::index_t M_Tile = 128;
+    static constexpr ck_tile::index_t N_Tile = 128;
+    static constexpr ck_tile::index_t K_Tile = 128 / sizeof(DataType);
+
+    static constexpr ck_tile::index_t M_Warp = 1;
+    static constexpr ck_tile::index_t N_Warp = 4;
+    static constexpr ck_tile::index_t K_Warp = 1;
+
+    static constexpr ck_tile::index_t M_Warp_Tile = 32;
+    static constexpr ck_tile::index_t N_Warp_Tile = 32;
+    static constexpr ck_tile::index_t K_Warp_Tile = sizeof(DataType) == 2 ? 16 : 64;
+
+    static constexpr int kBlockPerCu = 2;
+};
+
+#if 0
+// GEMM config with 16x16 warp tile
+template <typename DataType>
+struct GemmConfig
+{
+    static constexpr ck_tile::index_t M_Tile = 128;
+    static constexpr ck_tile::index_t N_Tile = 128;
+    static constexpr ck_tile::index_t K_Tile = 128 / sizeof(DataType);
+
+    static constexpr ck_tile::index_t M_Warp = 1;
+    static constexpr ck_tile::index_t N_Warp = 4;
+    static constexpr ck_tile::index_t K_Warp = 1;
+
+    static constexpr ck_tile::index_t M_Warp_Tile = 16;
+    static constexpr ck_tile::index_t N_Warp_Tile = 16;
+    static constexpr ck_tile::index_t K_Warp_Tile = sizeof(DataType) == 2 ? 32 : 128;
+
+    static constexpr int kBlockPerCu = 2;
+};
+#endif
+
+template <typename ADataType>
 struct GemmBasicTypeConfig;
 
 template <>
@@ -103,10 +142,10 @@ struct DataTypeTraits<ck_tile::half_t>
     static constexpr const char* name = "fp16";
 };
 
-template <typename T>
-struct is_8bit_type
-    : std::bool_constant<std::is_same_v<T, ck_tile::fp8_t> || std::is_same_v<T, ck_tile::bf8_t>>
+template <>
+struct DataTypeTraits<ck_tile::bf16_t>
 {
+    static constexpr const char* name = "bf16";
 };
 
 auto create_args(int argc, char* argv[])
@@ -126,8 +165,8 @@ auto create_args(int argc, char* argv[])
         .insert("warmup", "50", "number of iterations before benchmark the kernel")
         .insert("repeat", "100", "number of iterations to benchmark the kernel")
         .insert("timer", "gpu", "gpu:gpu timer, cpu:cpu timer")
-        .insert("split_k", "1", "splitK value");
-
+        .insert("split_k", "1", "splitK value")
+        .insert("init", "0", "0:random, 1:linear, 2:constant(1)");
     bool result = arg_parser.parse(argc, argv);
     return std::make_tuple(result, arg_parser);
 }
