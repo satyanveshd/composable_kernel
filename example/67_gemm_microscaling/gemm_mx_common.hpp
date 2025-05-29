@@ -108,7 +108,6 @@ bool parse_cmd_args(int argc,
     return true;
 }
 
-#if 1
 template <bool KLast>
 void preShuffleScaleBuffer(ck::e8m0_bexp_t* src, ck::e8m0_bexp_t* dst, int MN, int K)
 {
@@ -186,7 +185,6 @@ void preShuffleBuffer(const ck::f4x2_pk_t* src, ck::f4x2_pk_t* dst, int N, int K
         }
     }
 }
-#endif
 
 template <typename DeviceOpInstance,
           typename ADataType,
@@ -346,60 +344,18 @@ bool run_mx_gemm(const ProblemSizeSplitK& problem_size, const ExecutionConfig& c
         }
     }
 
-#if 1
     preShuffleScaleBuffer<ck::is_same_v<ALayout, Row>>(a_m_k_scale.mData.data(),
                                                        a_shuffled_scale.mData.data(),
                                                        Scale_Padded_M,
                                                        K / ScaleBlockSize);
     preShuffleScaleBuffer<ck::is_same_v<BRefLayout, Col>>(
         b_k_n_scale.mData.data(), b_shuffled_scale.mData.data(), N, K / ScaleBlockSize);
+
     if constexpr(BPreShuffle)
     {
         int NPerXdl = 16; // Fixed 16
         preShuffleBuffer(b_k_n->mData.data(), b_input->mData.data(), N, K, NPerXdl);
     }
-#endif
-    // printf("a_scale:\n");
-    // for(ck::index_t i = 0; i < M; i++)
-    // {
-    //     for(ck::index_t j = 0; j < K / ScaleBlockSize; j++)
-    //     {
-    //         // a_m_k_scale(i, j) =
-    //         //     ck::type_convert<XDataType>(static_cast<float>(powf(2.0f, (j / 4) % 4)));
-    //         // a_m_k_scale(i, j) =ck::type_convert<XDataType>(static_cast<float>(1.0f));
-    //         // a_shuffled_scale(i, j) =ck::type_convert<XDataType>(static_cast<float>(1.0f));
-    //         printf("%02x ", *reinterpret_cast<uint8_t*>(&a_m_k_scale(i, j)));
-    //     }
-    //     printf("\n");
-    // }
-    // printf("b_scale:\n");
-    // for(ck::index_t i = 0; i < N; i++)
-    // {
-    //     for(ck::index_t j = 0; j < K / ScaleBlockSize; j++)
-    //     {
-    // //         // b_k_n_scale(j, i) =
-    // //             // ck::type_convert<XDataType>(static_cast<float>(powf(2.0f, (j / 4) % 4)));
-    //         // b_k_n_scale(j, i) =ck::type_convert<XDataType>(static_cast<float>(1.0f));
-    //         // b_shuffled_scale(j, i) =ck::type_convert<XDataType>(static_cast<float>(1.0f));
-    //         printf("%02x ", *reinterpret_cast<uint8_t*>(&b_k_n_scale(j, i)));
-    //     }
-    //     printf("\n");
-    // }
-
-    // printf("a_shuffled_scale:\n");
-    // for(ck::index_t i = 0; i < M * K / ScaleBlockSize; i++)
-    // {
-    //     printf("%02x ", *reinterpret_cast<uint8_t*>(&(a_shuffled_scale.mData.data()[i])));
-    //     if(i % 64 == 63)
-    //         printf("\n");
-    // }
-    // printf("b_shuffled_scale:\n");
-    // for(ck::index_t i = 0; i < N * K / ScaleBlockSize; i++)
-    // {
-    //     printf("%02x ", *reinterpret_cast<uint8_t*>(&(b_shuffled_scale.mData.data()[i])));
-    //     if(i % 64 == 63)
-    //         printf("\n");
-    // }
 
     if(config.verbosity > 0)
         std::cout << "Device memory allocation..." << std::endl;
@@ -454,7 +410,6 @@ bool run_mx_gemm(const ProblemSizeSplitK& problem_size, const ExecutionConfig& c
 
     std::size_t total_size =
         a_m_k.GetElementSpaceSizeInBytes() + b_k_n->GetElementSpaceSizeInBytes() +
-        a_m_k_scale.GetElementSpaceSizeInBytes() + b_k_n_scale.GetElementSpaceSizeInBytes() +
         a_shuffled_scale.GetElementSpaceSizeInBytes() +
         b_shuffled_scale.GetElementSpaceSizeInBytes();
     const auto total_cnt     = ck::math::integer_divide_ceil(512 * 1024 * 1024, total_size);
@@ -512,17 +467,6 @@ bool run_mx_gemm(const ProblemSizeSplitK& problem_size, const ExecutionConfig& c
             std::cout << "Done." << std::endl;
             std::cout << "Comparing results..." << std::endl;
         }
-
-        // if(config.init_method == 0)
-        // {
-        //     auto expected = static_cast<float>(K);
-        //     auto computed = type_convert<float>(c_m_n_device_result(1, 12));
-
-        //     res_verified = res_verified && std::abs(expected - computed) <= 0.0f;
-        //     std::cout << "\nExpected vs Computed: " << expected << " vs " << computed
-        //               << ((res_verified) ? " (PASSED!)" : " (FAILED!)") << std::endl
-        //               << std::endl;
-        // }
 
         res_verified = res_verified && ck::utils::check_err(c_m_n_device_result,
                                                             c_m_n_host_result,

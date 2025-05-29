@@ -1063,6 +1063,14 @@ __device__ void amd_direct_load_global_to_lds(const T* global_base_ptr,
         reinterpret_cast<__attribute__((address_space(3))) uint32_t*>(
             reinterpret_cast<size_t>(lds_base_ptr + lds_offset));
 #endif
+    BufferResource<T> wave_buffer_resource;
+    wave_buffer_resource.content = src_resource;
+    printf("Tid: %02d, src_resource: %08x %08x %08x %08x\n",
+      get_thread_local_1d_id(),
+      *reinterpret_cast<uint32_t*>(&(wave_buffer_resource.config(Number<0>{}))),
+      *reinterpret_cast<uint32_t*>(&(wave_buffer_resource.config(Number<1>{}))),
+      *reinterpret_cast<uint32_t*>(&(wave_buffer_resource.config(Number<2>{}))),
+      *reinterpret_cast<uint32_t*>(&(wave_buffer_resource.config(Number<3>{}))));
 
     llvm_amdgcn_raw_buffer_load_lds(
         src_resource, lds_ptr, bytes_per_thread, global_offset_bytes, 0, 0, 0);
