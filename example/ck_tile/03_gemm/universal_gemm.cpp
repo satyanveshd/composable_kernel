@@ -74,14 +74,14 @@ float gemm_calc(const ck_tile::GemmHostArgs& args, const ck_tile::stream_config&
         constexpr auto scheduler        = GemmConfig::Scheduler;
         constexpr auto memory_operation = memory_operation_.value;
 
-        using UniversalGemmProblem     = ck_tile::UniversalGemmPipelineProblem<ADataType,
-                                                                               BDataType,
-                                                                               AccDataType,
-                                                                               GemmShape,
-                                                                               GemmUniversalTraits,
-                                                                               scheduler,
-                                                                               has_hot_loop_v,
-                                                                               tail_number_v>;
+        using UniversalGemmProblem = ck_tile::UniversalGemmPipelineProblem<ADataType,
+                                                                           BDataType,
+                                                                           AccDataType,
+                                                                           GemmShape,
+                                                                           GemmUniversalTraits,
+                                                                           scheduler,
+                                                                           has_hot_loop_v,
+                                                                           tail_number_v>;
 
         using GemmPipeline = typename PipelineTypeTraits<
             GemmConfig::Pipeline>::template GemmPipeline<UniversalGemmProblem>;
@@ -227,17 +227,16 @@ int run_gemm_example_prec_type(std::string a_layout, std::string b_layout, int a
     }
     else
     {
-        if(a_layout == "R" && b_layout == "C")
-        {
-            return run_gemm_example_with_layouts<GemmConfig, APrecType, BPrecType, CPrecType>(
-                argc, argv, Row{}, Col{}, Row{});
-        }
-        else if(a_layout == "R" && b_layout == "R")
+        if(a_layout == "R" && b_layout == "R")
         {
             return run_gemm_example_with_layouts<GemmConfig, APrecType, BPrecType, CPrecType>(
                 argc, argv, Row{}, Row{}, Row{});
         }
-
+        else if(a_layout == "R" && b_layout == "C")
+        {
+            return run_gemm_example_with_layouts<GemmConfig, APrecType, BPrecType, CPrecType>(
+                argc, argv, Row{}, Col{}, Row{});
+        }
         else if(a_layout == "C" && b_layout == "R")
         {
             return run_gemm_example_with_layouts<GemmConfig, APrecType, BPrecType, CPrecType>(
@@ -315,13 +314,13 @@ int main(int argc, char* argv[])
 {
     try
     {
-        //run_gemm_example<GemmConfigMemoryInterwave>(argc, argv);
-        //run_gemm_example<GemmConfigMemoryIntrawave>(argc, argv);
+        // run_gemm_example<GemmConfigMemoryInterwave>(argc, argv);
+        // run_gemm_example<GemmConfigMemoryIntrawave>(argc, argv);
         return !run_gemm_example<GemmConfigComputeV3>(argc, argv);
-        //run_gemm_example<GemmConfigComputeV3_1>(argc, argv);
-        //run_gemm_example<GemmConfigComputeV3_2>(argc, argv);
-        //run_gemm_example<GemmConfigComputeV4>(argc, argv);
-        //run_gemm_example<GemmConfigComputeV4_1>(argc, argv);
+        // run_gemm_example<GemmConfigComputeV3_1>(argc, argv);
+        // run_gemm_example<GemmConfigComputeV3_2>(argc, argv);
+        // run_gemm_example<GemmConfigComputeV4>(argc, argv);
+        // run_gemm_example<GemmConfigComputeV4_1>(argc, argv);
     }
     catch(const std::runtime_error& e)
     {
