@@ -28,8 +28,10 @@ struct GemmPipelineAgBgCrImplBase
                                        SrcTileWindow& dram_tile_window,
                                        const DramTileWindowStep& dram_tile_window_step) const
     {
-        load_tile(dst_block_tile, dram_tile_window);
-        move_tile_window(dram_tile_window, dram_tile_window_step);
+        static_for<0, DstBlockTile::size(), 1>{}([&](auto idx) {
+            load_tile(dst_block_tile[number<idx>{}], dram_tile_window[number<idx>{}]);
+            move_tile_window(dram_tile_window[number<idx>{}], dram_tile_window_step);
+        });
     }
 
     template <typename DstTileWindow, typename SrcBlockTile, typename ElementFunction>
@@ -116,28 +118,8 @@ struct GemmPipelineAgBgCrImplBase
                              make_tuple(number<MPerBlock>{}, number<KPerBlock>{}),
                              {0, 0},
                              ALdsLoadTileDistr{});
-        //((((((((((((((((((((()))))))))))))))))))))
-        using elemenet_wise_output_t = decltype(load_tile(make_tile_window(a_dram_block_window_tmp[number<0>{}].get_bottom_tensor_view(),
-                                make_tuple(YPerTile{}, XPerTile{}),
-                                a_dram_block_window_tmp[number<0>{}].get_window_origin(),
-                                Policy::template MakeADramTileDistribution<Problem>())));
-          elemenet_wise_output_t tt;                      
-        //using ADataType = remove_cvref_t<std::tuple_element_t<number<0>{}, AsDataType>>;
 
-        auto a_copy_dram_window_t =
-            generate_tuple([&]([[maybe_unused]] auto idx) { return load_tile(a_copy_dram_window[number<1>{}]); },
-                           number<ADramBlockWindowTmp::size()>{});
-
-        auto a_copy_dram_window_tuple = concat_tuple_of_reference(
-            tie(tt, tt),
-            generate_tie(
-                [&](auto idx) -> auto& { return a_copy_dram_window_t[idx]; },
-                number<ADramBlockWindowTmp::size()>{}));
-
-        tile_elementwise_in_out_unpack_tuple(typename Problem::AElementwise{}, a_copy_dram_window_tuple);
-        //store_tile(a_copy_dram_window[number<0>{}], )
-        //((((((((((((((((((((()))))))))))))))))))))
-        return make_tuple(std::move(tt),
+        return make_tuple(std::move(a_copy_dram_window),
                           std::move(a_copy_lds_window),
                           std::move(a_lds_gemm_window));
     }
@@ -153,11 +135,13 @@ struct GemmPipelineAgBgCrImplBase
         using YPerTile = std::conditional_t<is_row_major, number<KPerBlock>, number<NPerBlock>>;
         using XPerTile = std::conditional_t<is_row_major, number<NPerBlock>, number<KPerBlock>>;
 
-        auto b_copy_dram_window =
-            make_tile_window(b_dram_block_window_tmp[number<0>{}].get_bottom_tensor_view(),
+        auto b_copy_dram_window = generate_tuple(
+            [&](auto idx) {
+            return make_tile_window(b_dram_block_window_tmp[number<idx>{}].get_bottom_tensor_view(),
                              make_tuple(YPerTile{}, XPerTile{}),
-                             b_dram_block_window_tmp[number<0>{}].get_window_origin(),
+                             b_dram_block_window_tmp[number<idx>{}].get_window_origin(),
                              Policy::template MakeBDramTileDistribution<Problem>());
+             }, number<BDramBlockWindowTmp::size()>{});
 
         // TODO: Do we really need those two tile windows???
         // They're exactly same...

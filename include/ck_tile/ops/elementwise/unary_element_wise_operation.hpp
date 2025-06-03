@@ -1488,69 +1488,43 @@ struct ElementWiseAdd
     /**
      * @brief Function call operator for element-wise addition with 3 inputs
      *
-     * @param r     Output element (result)
-     * @param a     first input
-     * @param b     second input
-     * @param c     third input
+     * @param e     Output element (result)
+     * @param c     first input
+     * @param d0    second input
+     * @param d1    third input
      *
      * @note [return] Perform element-wise addition and store the result in 'r'
      */
-    template <typename ResT, typename ParamT>
-    CK_TILE_DEVICE auto operator()(ResT& r, const ParamT& a, const ParamT& b, const ParamT& c) const
-        -> void
+    template <typename E, typename C, typename D0, typename D1>
+    CK_TILE_HOST_DEVICE auto operator()(E& e, const C& c, const D0& d0, const D1& d1) const -> void
     {
-        r = a + b + c;
-    }
+        const float x0_f = c + d0 + d1;
 
-    /**
-     * @brief Function call operator for element-wise addition with 3 inputs
-     *
-     * @param r     Output element (result)
-     * @param a     first input
-     *
-     * @note [return] Perform element-wise addition and store the result in 'r'
-     */
-    template <typename ResT, typename ParamT>
-    CK_TILE_HOST auto operator()(ResT& r, ParamT& a) const -> void
-    {
-        r += a;
+        e = ck_tile::type_convert<E>(x0_f);
     }
 };
 
 /**
  * @brief Struct defining element-wise multiplication operations
  */
-struct ElementWiseMul
+struct MultiplyMultiply
 {
     /**
      * @brief Function call operator for element-wise multiplication with 3 inputs
      *
-     * @param r     Output element (result)
-     * @param a     first input
-     * @param b     second input
-     * @param c     third input
+     * @param e     Output element (result)
+     * @param c     first input
+     * @param d0    second input
+     * @param d1    third input
      *
      * @note [return] Perform element-wise multiplication and store the result in 'r'
      */
-    template <typename ResT, typename ParamT>
-    CK_TILE_DEVICE auto operator()(ResT& r, const ParamT& a, const ParamT& b, const ParamT& c) const
-        -> void
+    template <typename E, typename C, typename D0, typename D1>
+    CK_TILE_HOST_DEVICE auto operator()(E& e, const C& c, const D0& d0, const D1& d1) const -> void
     {
-        r = a * b * c;
-    }
+        const float x0_f = c * d0 * d1;
 
-    /**
-     * @brief Function call operator for element-wise addition with 3 inputs
-     *
-     * @param r     Output element (result)
-     * @param a     first input
-     *
-     * @note [return] Perform element-wise addition and store the result in 'r'
-     */
-    template <typename ResT, typename ParamT>
-    CK_TILE_HOST auto operator()(ResT& r, const ParamT& a) const -> void
-    {
-        r *= a;
+        e = ck_tile::type_convert<E>(x0_f);
     }
 };
 

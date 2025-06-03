@@ -101,6 +101,8 @@ int run_multiple_abd_gemm_example_with_layouts(int argc,
     {
         return -1;
     }
+    using AElementWiseFn = ck_tile::element_wise::ElementWiseAdd;
+    using BElementWiseFn = ck_tile::element_wise::ElementWiseAdd;
     using CDEElementWiseFn = ck_tile::element_wise::ElementWiseAdd;
     using AsLayout         = ck_tile::tuple<A0Layout, A1Layout>;
     using BsLayout         = ck_tile::tuple<B0Layout, B1Layout>;
@@ -153,14 +155,14 @@ int run_multiple_abd_gemm_example_with_layouts(int argc,
     ck_tile::HostTensor<D1DataType> d1_m_n_tensors(
         f_host_tensor_descriptor(M, N, StrideD1, d1_layout));
 
-    ck_tile::HostTensor<CDataType> c_m_n_device_result(
+    ck_tile::HostTensor<CDataType> e_m_n_device_result(
         f_host_tensor_descriptor(M, N, StrideC, c_layout));
 
-    ck_tile::FillUniformDistribution<A0DataType>{-5.f, 5.f}(a0_m_k_tesnor);
-    ck_tile::FillUniformDistribution<A0DataType>{-5.f, 5.f}(a1_m_k_tesnor);
+    ck_tile::FillUniformDistribution<A0DataType>{-1.f, 1.f}(a0_m_k_tesnor);
+    ck_tile::FillUniformDistribution<A0DataType>{-1.f, 1.f}(a1_m_k_tesnor);
 
-    ck_tile::FillUniformDistribution<B0DataType>{-5.f, 5.f}(b0_k_n_tensors);
-    ck_tile::FillUniformDistribution<B1DataType>{-5.f, 5.f}(b1_k_n_tensors);
+    ck_tile::FillUniformDistribution<B0DataType>{-1.f, 1.f}(b0_k_n_tensors);
+    ck_tile::FillUniformDistribution<B1DataType>{-1.f, 1.f}(b1_k_n_tensors);
 
     ck_tile::FillUniformDistribution<D0DataType>{-1.f, 1.f}(d0_m_n_tensors);
     ck_tile::FillUniformDistribution<D1DataType>{-1.f, 1.f}(d1_m_n_tensors);
@@ -174,7 +176,7 @@ int run_multiple_abd_gemm_example_with_layouts(int argc,
     ck_tile::DeviceMem d0_m_n_dev_buf(d0_m_n_tensors.get_element_space_size_in_bytes());
     ck_tile::DeviceMem d1_m_n_dev_buf(d1_m_n_tensors.get_element_space_size_in_bytes());
 
-    ck_tile::DeviceMem c_m_n_dev_buf(c_m_n_device_result.get_element_space_size_in_bytes());
+    ck_tile::DeviceMem c_m_n_dev_buf(e_m_n_device_result.get_element_space_size_in_bytes());
 
     a0_m_k_dev_buf.ToDevice(a0_m_k_tesnor.mData.data());
     a1_m_k_dev_buf.ToDevice(a1_m_k_tesnor.mData.data());
@@ -186,7 +188,7 @@ int run_multiple_abd_gemm_example_with_layouts(int argc,
     d1_m_n_dev_buf.ToDevice(d1_m_n_tensors.mData.data());
 
     c_m_n_dev_buf.SetZero();
-    c_m_n_device_result.SetZero();
+    e_m_n_device_result.SetZero();
 
     std::array<const void*, DsDataType::size()> as_ptr_buf = {a0_m_k_dev_buf.GetDeviceBuffer(),
                                                               a1_m_k_dev_buf.GetDeviceBuffer()};
@@ -210,6 +212,8 @@ int run_multiple_abd_gemm_example_with_layouts(int argc,
                           BsLayout,
                           DsLayout,
                           CLayout,
+                          AElementWiseFn,
+                          BElementWiseFn,
                           CDEElementWiseFn>(as_ptr_buf,
                                             bs_ptr_buf,
                                             ds_ptr_buf,
@@ -224,42 +228,46 @@ int run_multiple_abd_gemm_example_with_layouts(int argc,
                                             n_warmup,
                                             n_repeat);
 
-    c_m_n_dev_buf.FromDevice(c_m_n_device_result.data());
+    c_m_n_dev_buf.FromDevice(e_m_n_device_result.data());
 
-    // ck_tile::HostTensor<CDataType> c_m_n_host_ref(
-    //     f_host_tensor_descriptor(M, N, StrideC, c_layout));
-    // c_m_n_host_ref.SetZero();
+    ck_tile::HostTensor<A0DataType> a_m_k_host_ref(f_host_tensor_descriptor(M, K, StrideA0, a0_layout));
+    ck_tile::HostTensor<B0DataType> b_k_n_host_ref(f_host_tensor_descriptor(K, N, StrideB0, b0_layout));
+    ck_tile::HostTensor<CDataType> e_m_n_host_ref(f_host_tensor_descriptor(M, N, StrideC, c_layout));
+    a_m_k_host_ref.SetZero();
+    b_k_n_host_ref.SetZero();
+    e_m_n_host_ref.SetZero();
 
-    // ck_tile::reference_gemm_multiple_d<
-    //     ADataType,
-    //     BDataType,
-    //     std::tuple<ck_tile::HostTensor<D0DataType>, ck_tile::HostTensor<D1DataType>>,
-    //     AccDataType,
-    //     CDataType,
-    //     CDEElementWiseFn>(
-    //     a_m_k_tesnor, b_k_n_tensors, std::tie(d0_m_n_tensors, d1_m_n_tensors), c_m_n_host_ref);
+    ck_tile::reference_gemm_multiple_abd<
+        A0DataType,
+        B0DataType,
+        D0DataType,
+        AccDataType,
+        CDataType,
+        AElementWiseFn,
+        BElementWiseFn,
+        CDEElementWiseFn>(
+        a0_m_k_tesnor, a1_m_k_tesnor, b0_k_n_tensors, b1_k_n_tensors, d0_m_n_tensors, a_m_k_host_ref, b_k_n_host_ref, e_m_n_host_ref);
 
     bool pass{true};
-    // if(arg_parser.get_int("v"))
-    // {
-    //     const float max_accumulated_value =
-    //         *std::max_element(c_m_n_host_ref.mData.begin(), c_m_n_host_ref.mData.end());
-    //     (void)(max_accumulated_value);
-    //     const auto rtol_atol = calculate_rtol_atol(K, 1, max_accumulated_value);
+    if(arg_parser.get_int("v"))
+    {
+        const float max_accumulated_value =
+            *std::max_element(e_m_n_host_ref.mData.begin(), e_m_n_host_ref.mData.end());
 
-    //     pass &= ck_tile::check_err(c_m_n_device_result,
-    //                                c_m_n_host_ref,
-    //                                "Error: Incorrect results!",
-    //                                rtol_atol.at(ck_tile::number<0>{}),
-    //                                rtol_atol.at(ck_tile::number<1>{}));
+        const auto rtol_atol = calculate_rtol_atol(K, 1, max_accumulated_value);
 
-    //     std::cout << "Relative error threshold: " << rtol_atol.at(ck_tile::number<0>{})
-    //               << std::endl;
-    //     std::cout << "Absolute error threshold: " << rtol_atol.at(ck_tile::number<1>{})
-    //               << std::endl;
-    //     std::cout << "The CPU veification result is: " << (pass ? "correct" : "fail") <<
-    //     std::endl;
-    // }
+        pass &= ck_tile::check_err(e_m_n_device_result,
+                                   e_m_n_host_ref,
+                                   "Error: Incorrect results!",
+                                   rtol_atol.at(ck_tile::number<0>{}),
+                                   rtol_atol.at(ck_tile::number<1>{}));
+
+        std::cout << "Relative error threshold: " << rtol_atol.at(ck_tile::number<0>{})
+                  << std::endl;
+        std::cout << "Absolute error threshold: " << rtol_atol.at(ck_tile::number<1>{})
+                  << std::endl;
+        std::cout << "The CPU veification result is: " << (pass ? "correct" : "fail") << std::endl;
+    }
     return pass;
 }
 
