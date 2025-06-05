@@ -144,6 +144,11 @@ bool profile_grouped_conv_fwd_impl(int do_verification,
     float best_tflops     = 0;
     float best_gb_per_sec = 0;
 
+    std::string best_op_name_exp;
+    float best_avg_time_exp   = 0;
+    float best_tflops_exp     = 0;
+    float best_gb_per_sec_exp = 0;
+
     // profile device op instances
     bool pass = true;
 
@@ -175,13 +180,25 @@ bool profile_grouped_conv_fwd_impl(int do_verification,
             std::cout << "Perf: " << std::setw(10) << avg_time << " ms, " << tflops << " TFlops, "
                       << gb_per_sec << " GB/s, " << op_name << std::endl;
 
-            if(tflops > best_tflops)
+            if (op_name.find("Explicit") != std::string::npos)
             {
-                best_op_name    = op_name;
-                best_tflops     = tflops;
-                best_avg_time   = avg_time;
-                best_gb_per_sec = gb_per_sec;
+                if(tflops > best_tflops_exp)
+                {
+                    best_op_name_exp    = op_name;
+                    best_tflops_exp     = tflops;
+                    best_avg_time_exp   = avg_time;
+                    best_gb_per_sec_exp = gb_per_sec;
+                }
+            } else {
+                if(tflops > best_tflops)
+                {
+                    best_op_name    = op_name;
+                    best_tflops     = tflops;
+                    best_avg_time   = avg_time;
+                    best_gb_per_sec = gb_per_sec;
+                }
             }
+
 
             if(do_verification)
             {
@@ -255,6 +272,10 @@ bool profile_grouped_conv_fwd_impl(int do_verification,
     std::cout << "Best configuration parameters:"
               << "\nname: " << best_op_name << "\navg_time: " << best_avg_time
               << "\ntflops: " << best_tflops << "\nGB/s: " << best_gb_per_sec << std::endl;
+
+    std::cout << "Best configuration parameters:"
+              << "\nname: " << best_op_name_exp << "\navg_time: " << best_avg_time_exp
+              << "\ntflops: " << best_tflops_exp << "\nGB/s: " << best_gb_per_sec_exp << std::endl;
 
     return pass;
 }

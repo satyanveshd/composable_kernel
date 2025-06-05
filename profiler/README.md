@@ -151,7 +151,7 @@
 # SplitK
 
  ################                   op   datatype  layout  verify  init  log  time  Ndims  G   N   K   C  Y  X  Hi  Wi  Sy  Sx  Dy  Dx  LeftPy  LeftPx  RightPy  RightPx  SplitK
-./bin/ckProfiler grouped_conv_bwd_weight         1       1      0     1    0     1      2 32 256 256 512  3  3  28  28   1   1   1   1       1       0        0        0       1
+./bin/ckProfiler grouped_conv_bwd_weight         5       2      1     1    0     0      2 2   64 4 4  1  1  7  7   1   1   1   1       1       0        0        0       -1
 
 ```
 

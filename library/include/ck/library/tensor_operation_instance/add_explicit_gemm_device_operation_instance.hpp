@@ -8,6 +8,7 @@
 
 #include "ck/utility/functional2.hpp"
 #include "ck/tensor_operation/gpu/device/impl/device_grouped_conv_bwd_weight_explicit_xdl.hpp"
+#include "ck/tensor_operation/gpu/device/impl/device_grouped_conv_fwd_explicit_xdl.hpp"
 
 namespace ck {
 namespace tensor_operation {
@@ -26,7 +27,7 @@ template <ck::index_t NDimSpatial,
           typename OutElementwiseOperation,
           typename DeviceGemmV3Ops,
           typename BaseOp>
-void add_explicit_gemm_device_operation_instances(
+void add_exp_grouped_conv_bwd_wei_device_operation_instances(
     std::vector<std::unique_ptr<BaseOp>>& op_instances)
 {
     ck::static_for<0, std::tuple_size_v<DeviceGemmV3Ops>, 1>{}([&](auto i) {
@@ -38,6 +39,47 @@ void add_explicit_gemm_device_operation_instances(
                                                                       OutLayout,
                                                                       InDataType,
                                                                       WeiDataType,
+                                                                      OutDataType,
+                                                                      InElementwiseOperation,
+                                                                      WeiElementwiseOperation,
+                                                                      OutElementwiseOperation,
+                                                                      DeviceGemmOp>;
+
+        static_assert(std::is_base_of_v<BaseOp, NewOpInstance>,
+                      "wrong! NewOpInstance should be derived from BaseOp");
+
+        op_instances.push_back(std::make_unique<NewOpInstance>(NewOpInstance{}));
+    });
+}
+
+template <ck::index_t NDimSpatial,
+          typename InLayout,
+          typename WeiLayout,
+          typename DsLayout,
+          typename OutLayout,
+          typename InDataType,
+          typename WeiDataType,
+          typename DsDataType,
+          typename OutDataType,
+          typename InElementwiseOperation,
+          typename WeiElementwiseOperation,
+          typename OutElementwiseOperation,
+          typename DeviceGemmV3Ops,
+          typename BaseOp>
+void add_exp_grouped_conv_fwd_device_operation_instances(
+    std::vector<std::unique_ptr<BaseOp>>& op_instances)
+{
+    ck::static_for<0, std::tuple_size_v<DeviceGemmV3Ops>, 1>{}([&](auto i) {
+        using DeviceGemmOp = std::tuple_element_t<i, DeviceGemmV3Ops>;
+
+        using NewOpInstance = DeviceGroupedConvFwd_Explicit_Xdl<NDimSpatial,
+                                                                      InLayout,
+                                                                      WeiLayout,
+                                                                      DsLayout,
+                                                                      OutLayout,
+                                                                      InDataType,
+                                                                      WeiDataType,
+                                                                      DsDataType,
                                                                       OutDataType,
                                                                       InElementwiseOperation,
                                                                       WeiElementwiseOperation,

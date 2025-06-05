@@ -58,11 +58,11 @@ struct DeviceGroupedConvBwdWeight_Explicit_Xdl
                  WeiDataType* p_wei_grid,
                  const OutDataType* p_out_grid,
                  const std::array<index_t, NDimSpatial + 3>&, // input
-                 const std::array<index_t, NDimSpatial + 3>&,
+                 const std::array<index_t, NDimSpatial + 3>& b_g_n_c_wis_strides,
                  const std::array<index_t, NDimSpatial + 3>& e_g_k_c_xs_lengths, // weight
-                 const std::array<index_t, NDimSpatial + 3>&,
+                 const std::array<index_t, NDimSpatial + 3>& e_g_k_c_xs_strides,
                  const std::array<index_t, NDimSpatial + 3>& a_g_n_k_wos_lengths, // output
-                 const std::array<index_t, NDimSpatial + 3>&,
+                 const std::array<index_t, NDimSpatial + 3>& a_g_n_k_wos_strides,
                  const std::array<ck::index_t, NDimSpatial>& conv_filter_strides,
                  const std::array<ck::index_t, NDimSpatial>&,
                  const std::array<ck::index_t, NDimSpatial>& input_left_pads,
@@ -84,6 +84,14 @@ struct DeviceGroupedConvBwdWeight_Explicit_Xdl
             const index_t M         = e_g_k_c_xs_lengths[I1];
             const index_t N         = e_g_k_c_xs_lengths[I2];
             const index_t K         = a_g_n_k_wos_lengths[I1] * DoHoWo;
+
+            const index_t StrideOut = a_g_n_k_wos_strides[spatial_offset + NDimSpatial - 1];
+            const index_t StrideIn = b_g_n_c_wis_strides[spatial_offset + NDimSpatial - 1];
+            const index_t StrideWei = e_g_k_c_xs_strides[I1];
+            const index_t StrideBatchOut = a_g_n_k_wos_strides[I0];
+            const index_t StrideBatchIn = b_g_n_c_wis_strides[I0];
+            const index_t StrideBatchWei = e_g_k_c_xs_strides[I0];
+            
             const index_t BatchSize = a_g_n_k_wos_lengths[I0];
 
             explicit_gemm_args = GemmArgument{p_out_grid,
@@ -93,14 +101,14 @@ struct DeviceGroupedConvBwdWeight_Explicit_Xdl
                                               M,
                                               N,
                                               K,
-                                              BatchSize * M,
-                                              BatchSize * N,
+                                              StrideOut,
+                                              StrideIn,
                                               {},
-                                              N,
-                                              M,
-                                              N,
+                                              StrideWei,
+                                              StrideBatchOut,
+                                              StrideBatchIn,
                                               {},
-                                              M * N,
+                                              StrideBatchWei,
                                               BatchSize,
                                               out_element_op,
                                               in_element_op,

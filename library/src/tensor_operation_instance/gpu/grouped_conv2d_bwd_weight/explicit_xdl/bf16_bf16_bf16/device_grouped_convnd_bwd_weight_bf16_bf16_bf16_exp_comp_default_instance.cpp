@@ -21,7 +21,7 @@ void add_device_grouped_convnd_bwd_weight_bf16_bf16_bf16_exp_comp_default_instan
                                                            PassThrough,
                                                            PassThrough>>>& instances)
 {
-    add_explicit_gemm_device_operation_instances<
+    add_exp_grouped_conv_bwd_wei_device_operation_instances<
         2,
         NHWGC,
         GKYXC,
@@ -47,7 +47,7 @@ void add_device_grouped_convnd_bwd_weight_bf16_bf16_bf16_exp_comp_default_instan
                                                            PassThrough,
                                                            PassThrough>>>& instances)
 {
-    add_explicit_gemm_device_operation_instances<
+    add_exp_grouped_conv_bwd_wei_device_operation_instances<
         3,
         NDHWGC,
         GKZYXC,
