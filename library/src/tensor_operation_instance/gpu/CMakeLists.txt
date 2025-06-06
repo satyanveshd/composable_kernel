@@ -298,7 +298,8 @@ FOREACH(subdir_path ${dir_list})
             if("${cmake_instance}" MATCHES "gemm" OR 
                "${cmake_instance}" MATCHES "mha" OR 
                "${cmake_instance}" MATCHES "contraction" OR 
-               "${cmake_instance}" MATCHES "reduce")
+               "${cmake_instance}" MATCHES "reduce" OR
+	       "${cmake_instance}" MATCHES "other")
                     set(add_inst 0)
             endif()
         endif()
