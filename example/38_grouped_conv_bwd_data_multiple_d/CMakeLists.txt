@@ -1,6 +1,12 @@
 add_custom_target(example_grouped_conv_bwd_data)
 
+set(EXAMPLE_COMPILE_OPTIONS)
+list(APPEND EXAMPLE_COMPILE_OPTIONS -g -fverbose-asm --save-temps -Wno-gnu-line-marker -Rpass-analysis=kernel-resource-usage)
+
 add_example_executable(example_grouped_conv_bwd_data_xdl_fp16 grouped_conv_bwd_data_xdl_fp16.cpp)
+# target_compile_options(example_grouped_conv_bwd_data_xdl_fp16 PRIVATE ${EXAMPLE_COMPILE_OPTIONS})
+
+
 add_example_dependencies(example_grouped_conv_bwd_data example_grouped_conv_bwd_data_xdl_fp16)
 
 add_example_executable(example_grouped_conv_bwd_data_xdl_fp16_comp_bf8_fp8 grouped_conv_bwd_data_xdl_fp16_comp_bf8_fp8.cpp)

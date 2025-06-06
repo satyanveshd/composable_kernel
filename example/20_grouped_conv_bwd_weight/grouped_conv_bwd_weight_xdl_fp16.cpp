@@ -27,7 +27,25 @@ using OutElementOp = PassThrough;
 
 template <ck::index_t NDimSpatial>
 using DeviceConvBwdWeightInstance =
-        ck::tensor_operation::device::DeviceGroupedConvBwdWeightTwoStage_Xdl_CShuffle< NDimSpatial,  ck::tensor_layout::convolution::NHWGC,   ck::tensor_layout::convolution::GKYXC,   ck::tensor_layout::convolution::NHWGK,   BF16,    BF16,    BF16,     F32, PassThrough, PassThrough, PassThrough,                  ConvBwdWeightDefault,    256,    64,    64,     32,   8,   32,   32,    1,    1,  S<4, 64,  1>, S<2, 0, 1>,  S<1, 0, 2>,                   1,              1,              8,      false,  S<4, 64,  1>,  S<2, 0, 1>,  S<1, 0, 2>,                1,              1,              8,      false,           1,           1,   S<1, 32, 1, 8>,                  1, ck::BlockGemmPipelineScheduler::Interwave, ck::BlockGemmPipelineVersion::v1>;
+        ck::tensor_operation::device::DeviceGroupedConvBwdWeightTwoStage_Xdl_CShuffle<
+            NDimSpatial,
+            ck::tensor_layout::convolution::NHWGC,
+            ck::tensor_layout::convolution::GKYXC,
+            ck::tensor_layout::convolution::NHWGK,
+            BF16,    BF16,    BF16,     F32,
+            PassThrough, PassThrough, PassThrough,
+            ConvBwdWeightDefault,
+            256,    64,    64,
+            32,   8,
+            32,   32,
+            1,    1,
+            S<4, 64,  1>, S<2, 0, 1>,  S<1, 0, 2>,
+            1, 1, 8, false,
+            S<4, 64,  1>,  S<2, 0, 1>,  S<1, 0, 2>,
+            1, 1, 8, false,
+            1, 1, S<1, 32, 1, 8>, 1,
+            ck::BlockGemmPipelineScheduler::Intrawave, ck::BlockGemmPipelineVersion::v1>;
+            // ck::BlockGemmPipelineScheduler::Intrawave, ck::BlockGemmPipelineVersion::v3>;
 
 template <ck::index_t NDimSpatial>
 using HostConvBwdWeightInstance = ck::tensor_operation::host::ReferenceConvBwdWeight<NDimSpatial,

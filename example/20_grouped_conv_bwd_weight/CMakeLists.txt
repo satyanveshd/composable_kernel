@@ -1,5 +1,12 @@
 add_custom_target(example_grouped_conv_bwd_weight)
 add_example_executable(example_grouped_conv_bwd_weight_xdl_fp16 grouped_conv_bwd_weight_xdl_fp16.cpp)
+
+set(EXAMPLE_GEMM_COMPILE_OPTIONS)
+list(APPEND EXAMPLE_GEMM_COMPILE_OPTIONS -mllvm -enable-noalias-to-md-conversion=0)
+# list(APPEND EXAMPLE_GEMM_COMPILE_OPTIONS -mllvm -enable-noalias-to-md-conversion=0 -g -fverbose-asm --save-temps -Wno-gnu-line-marker)
+target_compile_options(example_grouped_conv_bwd_weight_xdl_fp16 PRIVATE ${EXAMPLE_GEMM_COMPILE_OPTIONS})
+
+
 add_example_dependencies(example_grouped_conv_bwd_weight example_grouped_conv_bwd_weight_xdl_fp16)
 
 add_example_executable(example_grouped_conv_bwd_weight_xdl_bf16 grouped_conv_bwd_weight_xdl_bf16.cpp)

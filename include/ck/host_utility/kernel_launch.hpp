@@ -7,8 +7,83 @@
 
 #include "ck/ck.hpp"
 #include "ck/utility/env.hpp"
+#include "ck/utility/tuple.hpp"
 #include "ck/stream_config.hpp"
 #include "ck/host_utility/hip_check_error.hpp"
+
+#include <chrono>
+
+template <typename KernelImpl,
+          typename... Args>
+auto
+make_kernel(KernelImpl f, dim3 grid_dim, dim3 block_dim, std::size_t lds_byte, Args... args)
+{
+    if(ck::EnvIsEnabled(CK_ENV(CK_LOGGING)))
+    {
+        std::cout << "Make Kernel grid: {" 
+                  << grid_dim.x << "," << grid_dim.y << "," << grid_dim.z << "} "
+                  << "block: {"
+                  << block_dim.x << "," << block_dim.y << "," << block_dim.z << "} "
+                  << std::endl;
+    }
+    return [=](const StreamConfig& s) {
+        f<<<grid_dim, block_dim, lds_byte, s.stream_id_>>>(args...);
+    };
+}
+
+template <typename Callable>
+void launch_and_check(const StreamConfig& sc, Callable&& callable)
+{
+    if(!(static_cast<void>(callable(sc)), hipPeekAtLastError() == hipSuccess))
+    {
+        HIP_CHECK_ERROR(hipGetLastError());
+    }
+}
+
+template <typename... StreamConfigs, typename... Callables>
+float launch_and_time_kernels(const ck::Tuple<StreamConfigs...>& s_configs,
+                              const ck::Tuple<Callables...>& callables)
+{
+    std::size_t cold_iters = s_configs[ck::Number<0>{}].cold_niters_;
+    std::size_t nrepeat = s_configs[ck::Number<0>{}].nrepeat_;
+    
+    // warm up
+    for(std::size_t c_it = 0; c_it < cold_iters; ++c_it)
+    {
+        ck::static_for<0, ck::Tuple<StreamConfigs...>::Size(), 1>{}(
+            [&](auto i) {
+                using SC_t = ck::tuple_element_t<i, ck::Tuple<StreamConfigs...>>;
+                using K_t = ck::tuple_element_t<i, ck::Tuple<Callables...>>;
+                launch_and_check(std::forward<const SC_t&>(s_configs[ck::Number<i>{}]),
+                                 std::forward<const K_t&>(callables[ck::Number<i>{}]));
+            });
+    }
+
+    std::chrono::time_point<std::chrono::high_resolution_clock> start_tick;
+    std::chrono::time_point<std::chrono::high_resolution_clock> stop_tick;
+
+    hip_check_error(hipDeviceSynchronize());
+    start_tick = std::chrono::high_resolution_clock::now();
+    for(std::size_t c_it = 0; c_it < nrepeat; ++c_it)
+    {
+        ck::static_for<0, ck::Tuple<StreamConfigs...>::Size(), 1>{}(
+            [&](auto i) {
+                using SC_t = ck::tuple_element_t<i, ck::Tuple<StreamConfigs...>>;
+                using K_t = ck::tuple_element_t<i, ck::Tuple<Callables...>>;
+                launch_and_check(std::forward<const SC_t&>(s_configs[ck::Number<i>{}]),
+                                 std::forward<const K_t&>(callables[ck::Number<i>{}]));
+            });
+    }
+    hip_check_error(hipDeviceSynchronize());
+    stop_tick = std::chrono::high_resolution_clock::now();
+
+    double sec =
+            std::chrono::duration_cast<std::chrono::duration<double>>(stop_tick - start_tick)
+                .count();
+    float total_time = static_cast<float>(sec * 1e3);
+
+    return total_time / nrepeat;
+}
 
 template <typename... Args, typename F>
 float launch_and_time_kernel(const StreamConfig& stream_config,

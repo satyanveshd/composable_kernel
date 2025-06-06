@@ -99,7 +99,7 @@ bool run_conv_bwd_data(const ExecutionConfig& config,
         return false;
     }
 
-    float ave_time = invoker.Run(argument, StreamConfig{nullptr, config.time_kernel});
+    float ave_time = invoker.Run(argument, StreamConfig{nullptr, config.time_kernel, 1});
 
     std::size_t flop      = conv_params.GetFlops();
     std::size_t num_btype = conv_params.GetByte<InDataType, WeiDataType, OutDataType>();

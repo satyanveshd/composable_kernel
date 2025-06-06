@@ -668,17 +668,17 @@ struct TransformConvBwdDataToGemm_v1
             if constexpr(NDimSpatial == 2)
             {
                 // A: output tensor
-                const auto out_n_hop_wop_k_grid_desc = transform_tensor_descriptor(
-                    out_grid_desc,
-                    make_tuple(make_pass_through_transform(N_),
-                               make_pad_transform(Ho_, I0, I0),
-                               make_pad_transform(Wo_, I0, I0),
-                               make_pass_through_transform(K_)),
-                    make_tuple(Sequence<0>{}, Sequence<1>{}, Sequence<2>{}, Sequence<3>{}),
-                    make_tuple(Sequence<0>{}, Sequence<1>{}, Sequence<2>{}, Sequence<3>{}));
+                // const auto out_n_hop_wop_k_grid_desc = transform_tensor_descriptor(
+                //     out_grid_desc,
+                //     make_tuple(make_pass_through_transform(N_),
+                //                make_pad_transform(Ho_, I0, I0),
+                //                make_pad_transform(Wo_, I0, I0),
+                //                make_pass_through_transform(K_)),
+                //     make_tuple(Sequence<0>{}, Sequence<1>{}, Sequence<2>{}, Sequence<3>{}),
+                //     make_tuple(Sequence<0>{}, Sequence<1>{}, Sequence<2>{}, Sequence<3>{}));
 
                 const auto out_n_ydot_htilde_xdot_wtilde_k_grid_desc = transform_tensor_descriptor(
-                    out_n_hop_wop_k_grid_desc,
+                    out_grid_desc,
                     make_tuple(
                         make_pass_through_transform(N_),
                         make_embed_transform(make_tuple(YDot_, HTilde_),

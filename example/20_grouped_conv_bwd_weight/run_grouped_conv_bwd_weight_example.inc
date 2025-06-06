@@ -81,7 +81,9 @@ bool run_grouped_conv_bwd_weight(const ExecutionConfig& config,
 
 
 
-    for (int sp = 1; sp < 2048; sp*=2) {
+    // for (int sp = 1; sp < 2048; sp*=2) {
+    {
+    int sp = 603;
 
     auto argument = conv.MakeArgument(static_cast<InDataType*>(in_device_buf.GetDeviceBuffer()),
                                       static_cast<WeiDataType*>(wei_device_buf.GetDeviceBuffer()),
@@ -100,7 +102,8 @@ bool run_grouped_conv_bwd_weight(const ExecutionConfig& config,
                                       WeiElementOp{},
                                       OutElementOp{},
                                       sp);
-                                    (void)(split_k);
+                                    
+        (void)(split_k);
 
     const std::size_t workspace_sz = conv.GetWorkSpaceSize(&argument);
     DeviceMem workspace_dev(workspace_sz);

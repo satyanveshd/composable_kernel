@@ -33,6 +33,7 @@ static constexpr auto ConvBwdDataDefault =
     ck::tensor_operation::device::ConvolutionBackwardDataSpecialization::Default;
 
 using FP16 = ck::half_t;
+using BF16 = ck::bhalf_t;
 using FP32 = float;
 using FP8  = ck::f8_t;
 using BF8  = ck::bf8_t;
@@ -47,7 +48,7 @@ struct ExecutionConfig final
 #define DefaultConvParams                                                                \
     ck::utils::conv::ConvParam                                                           \
     {                                                                                    \
-        NDimSpatial, 32, 4, 192, 192, {3, 3}, {28, 28}, {1, 1}, {1, 1}, {1, 1}, { 1, 1 } \
+        NDimSpatial, 1, 16, 192, 128, {2, 2}, {24, 16}, {2, 2}, {1, 1}, {0, 0}, { 0, 0 } \
     }
 
 inline void print_help_msg()

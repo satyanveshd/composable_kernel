@@ -254,6 +254,10 @@ struct GridwiseGemmMultipleD_xdl_cshuffle
     {
         return BlockToCTileMap_M00_N0_M01Adapt<MPerBlock, NPerBlock, EGridDesc_M_N>(
             e_grid_desc_m_n);
+        // return BlockToCTileMap_Grouped_M00_N0_M01Adapt<8, MPerBlock, NPerBlock>(
+        //        e_grid_desc_m_n.GetLength(I0),
+        //        e_grid_desc_m_n.GetLength(I1),
+        //        4);
     }
 
     template <typename ALayout, typename BLayout, typename ELayout>
@@ -342,6 +346,12 @@ struct GridwiseGemmMultipleD_xdl_cshuffle
         const auto N  = b_grid_desc_n_k.GetLength(I0);
         const auto AK = a_grid_desc_m_k.GetLength(I1);
         const auto BK = b_grid_desc_n_k.GetLength(I1);
+
+        if(ck::EnvIsEnabled(CK_ENV(CK_LOGGING)))
+        {
+            std::cout << "M: " << M << ", N: " << N << ", AK: " << AK << ", BK: " << BK
+                    << std::endl;
+        }
 
         // check consistency of desc
         if(!(M == e_grid_desc_m_n.GetLength(I0) && N == e_grid_desc_m_n.GetLength(I1) && AK == BK))

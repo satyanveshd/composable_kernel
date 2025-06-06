@@ -383,6 +383,8 @@ struct DeviceGroupedConvBwdDataMultipleD_Xdl_CShuffle_v1
     using EGridDesc_MBlock_MPerBlock_NBlock_NPerBlock =
         decltype(MakeEGridDescriptor_MBlock_MPerBlock_NBlock_NPerBlock(EGridDesc_M_N{}));
 
+
+    // TODO: use MI300X optimized block 2 etile map
     // block-to-e-tile map
     using Block2ETileMap = remove_cvref_t<
         decltype(GridwiseGemmMultipleD_xdl_cshuffle<
@@ -618,6 +620,17 @@ struct DeviceGroupedConvBwdDataMultipleD_Xdl_CShuffle_v1
                             input_right_pads,
                             tildes,
                             k_batch_};
+
+                        if(ck::EnvIsEnabled(CK_ENV(CK_LOGGING)))
+                        {
+                            std::cout << "a_g_n_k_wos_lengths: {" 
+                                    << a_g_n_k_wos_lengths[0] << "," << a_g_n_k_wos_lengths[1] << "," << a_g_n_k_wos_lengths[2] << "," << a_g_n_k_wos_lengths[3] << "," << a_g_n_k_wos_lengths[4] << "} "
+                                    << "b_g_k_c_xs_lengths: {"
+                                    << b_g_k_c_xs_lengths[0] << "," << b_g_k_c_xs_lengths[1] << "," << b_g_k_c_xs_lengths[2] << "," << b_g_k_c_xs_lengths[3] << "," << b_g_k_c_xs_lengths[4] << "} "
+                                    << "e_g_n_c_wis_lengths: {"
+                                    << e_g_n_c_wis_lengths[0] << "," << e_g_n_c_wis_lengths[1] << "," << e_g_n_c_wis_lengths[2] << "," << e_g_n_c_wis_lengths[3] << "," << e_g_n_c_wis_lengths[4] << "} "
+                                    << std::endl;
+                        }
 
                         conv_N_per_block_ = conv_to_gemm_transform_.N_;
 
@@ -923,76 +936,204 @@ struct DeviceGroupedConvBwdDataMultipleD_Xdl_CShuffle_v1
                            arg.GetWorkspaceATensorSizeBytes() / sizeof(BDataType);
             }
 
-            for(std::size_t i = 0; i < arg.a_grid_desc_ak0_m_ak1_container_.size(); i++)
-            {
-                if(!GridwiseGemm::CheckValidity(arg.a_grid_desc_m_k_container_[i],
-                                                arg.b_grid_desc_n_k_container_[i],
-                                                arg.ds_grid_desc_m_n_container_[i],
-                                                arg.e_grid_desc_m_n_container_[i],
-                                                arg.block_2_etile_map_container_[i],
-                                                arg.k_batch_))
-                {
-                    throw std::runtime_error("wrong! device_op has invalid setting");
-                }
+            hipStream_t s1_{nullptr}, s2_{nullptr}, s3_{nullptr}, s4_{nullptr};
+            hip_check_error(hipStreamCreate(&s1_));
+            hip_check_error(hipStreamCreate(&s2_));
+            hip_check_error(hipStreamCreate(&s3_));
+            hip_check_error(hipStreamCreate(&s4_));
+            
+            StreamConfig sc1_, sc2_, sc3_, sc4_;
 
-                const index_t gdx = arg.block_2_etile_map_container_[i].CalculateGridSize(
-                    arg.e_grid_desc_m_n_container_[i]);
+            sc1_ = stream_config;
+            sc2_ = stream_config;
+            sc3_ = stream_config;
+            sc4_ = stream_config;
 
-                const auto GemmK = arg.a_grid_desc_m_k_container_[i].GetLength(I1);
+            sc1_.stream_id_ = s1_;
+            sc2_.stream_id_ = s2_;
+            sc3_.stream_id_ = s3_;
+            sc4_.stream_id_ = s4_;
 
-                auto launch_kernel = [&](auto has_main_k_block_loop) {
-                    constexpr bool has_main_loop = has_main_k_block_loop.value;
+            const auto kernel = kernel_grouped_conv_bwd_data_multiple_d_xdl_cshuffle<
+                                    GridwiseGemm,
+                                    ADataType, 
+                                    typename GridwiseGemm::DsGridPointer,
+                                    EDataType,
+                                    AElementwiseOp,
+                                    BElementwiseOp,
+                                    CDEElementwiseOp,
+                                    DeviceOp::AGridDesc_AK0_M_AK1,
+                                    DeviceOp::BGridDesc_BK0_N_BK1,
+                                    DeviceOp::DsGridDesc_MBlock_MPerBlock_NBlock_NPerBlock,
+                                    DeviceOp::EGridDesc_MBlock_MPerBlock_NBlock_NPerBlock,
+                                    Block2ETileMap,
+                                    ComputePtrOffsetOfStridedBatch<I1, I1, NumDTensor>,
+                                    ComputePtrOffsetOfStridedBatch<I1, I1, I0>,
+                                    true,
+                                    ElementOp>;
+        
+            const index_t gdx1 = arg.block_2_etile_map_container_[0].CalculateGridSize(
+                                        arg.e_grid_desc_m_n_container_[0]);
+            const index_t gdx2 = arg.block_2_etile_map_container_[1].CalculateGridSize(
+                                        arg.e_grid_desc_m_n_container_[1]);
+            const index_t gdx3 = arg.block_2_etile_map_container_[2].CalculateGridSize(
+                                        arg.e_grid_desc_m_n_container_[2]);
+            const index_t gdx4 = arg.block_2_etile_map_container_[3].CalculateGridSize(
+                                        arg.e_grid_desc_m_n_container_[3]);
 
-                    const auto kernel = kernel_grouped_conv_bwd_data_multiple_d_xdl_cshuffle<
-                        GridwiseGemm,
-                        ADataType, // TODO: distiguish A/B datatype
-                        typename GridwiseGemm::DsGridPointer,
-                        EDataType,
-                        AElementwiseOp,
-                        BElementwiseOp,
-                        CDEElementwiseOp,
-                        DeviceOp::AGridDesc_AK0_M_AK1,
-                        DeviceOp::BGridDesc_BK0_N_BK1,
-                        DeviceOp::DsGridDesc_MBlock_MPerBlock_NBlock_NPerBlock,
-                        DeviceOp::EGridDesc_MBlock_MPerBlock_NBlock_NPerBlock,
-                        Block2ETileMap,
-                        ComputePtrOffsetOfStridedBatch<I1, I1, NumDTensor>,
-                        ComputePtrOffsetOfStridedBatch<I1, I1, I0>,
-                        has_main_loop,
-                        ElementOp>;
+            const auto k1 = make_kernel(kernel,
+                                    dim3(gdx1, gdy, gdz),
+                                    dim3(BlockSize),
+                                    0,
+                                    p_a_grid,
+                                    p_b_grid,
+                                    arg.p_ds_grid_,
+                                    p_e_grid,
+                                    arg.a_element_op_,
+                                    arg.b_element_op_,
+                                    arg.cde_element_op_,
+                                    arg.a_grid_desc_ak0_m_ak1_container_[0],
+                                    arg.b_grid_desc_bk0_n_bk1_container_[0],
+                                    arg.ds_grid_desc_mblock_mperblock_nblock_nperblock_container_[0],
+                                    arg.e_grid_desc_mblock_mperblock_nblock_nperblock_container_[0],
+                                    arg.block_2_etile_map_container_[0],
+                                    arg.compute_ptr_offset_of_batch_,
+                                    arg.compute_ptr_offset_of_n_,
+                                    arg.k_batch_);
 
-                    return launch_and_time_kernel(
-                        stream_config,
-                        kernel,
-                        dim3(gdx, gdy, gdz),
-                        dim3(BlockSize),
-                        0,
-                        p_a_grid,
-                        p_b_grid,
-                        arg.p_ds_grid_,
-                        p_e_grid,
-                        arg.a_element_op_,
-                        arg.b_element_op_,
-                        arg.cde_element_op_,
-                        arg.a_grid_desc_ak0_m_ak1_container_[i],
-                        arg.b_grid_desc_bk0_n_bk1_container_[i],
-                        arg.ds_grid_desc_mblock_mperblock_nblock_nperblock_container_[i],
-                        arg.e_grid_desc_mblock_mperblock_nblock_nperblock_container_[i],
-                        arg.block_2_etile_map_container_[i],
-                        arg.compute_ptr_offset_of_batch_,
-                        arg.compute_ptr_offset_of_n_,
-                        arg.k_batch_);
-                };
+            const auto k2 = make_kernel(kernel,
+                                    dim3(gdx2, gdy, gdz),
+                                    dim3(BlockSize),
+                                    0,
+                                    p_a_grid,
+                                    p_b_grid,
+                                    arg.p_ds_grid_,
+                                    p_e_grid,
+                                    arg.a_element_op_,
+                                    arg.b_element_op_,
+                                    arg.cde_element_op_,
+                                    arg.a_grid_desc_ak0_m_ak1_container_[1],
+                                    arg.b_grid_desc_bk0_n_bk1_container_[1],
+                                    arg.ds_grid_desc_mblock_mperblock_nblock_nperblock_container_[1],
+                                    arg.e_grid_desc_mblock_mperblock_nblock_nperblock_container_[1],
+                                    arg.block_2_etile_map_container_[1],
+                                    arg.compute_ptr_offset_of_batch_,
+                                    arg.compute_ptr_offset_of_n_,
+                                    arg.k_batch_);
 
-                if(GridwiseGemm::CalculateHasMainKBlockLoop(GemmK, arg.k_batch_))
-                {
-                    ave_time += launch_kernel(integral_constant<bool, true>{});
-                }
-                else
-                {
-                    ave_time += launch_kernel(integral_constant<bool, false>{});
-                }
-            }
+            const auto k3 = make_kernel(kernel,
+                                    dim3(gdx3, gdy, gdz),
+                                    dim3(BlockSize),
+                                    0,
+                                    p_a_grid,
+                                    p_b_grid,
+                                    arg.p_ds_grid_,
+                                    p_e_grid,
+                                    arg.a_element_op_,
+                                    arg.b_element_op_,
+                                    arg.cde_element_op_,
+                                    arg.a_grid_desc_ak0_m_ak1_container_[2],
+                                    arg.b_grid_desc_bk0_n_bk1_container_[2],
+                                    arg.ds_grid_desc_mblock_mperblock_nblock_nperblock_container_[2],
+                                    arg.e_grid_desc_mblock_mperblock_nblock_nperblock_container_[2],
+                                    arg.block_2_etile_map_container_[2],
+                                    arg.compute_ptr_offset_of_batch_,
+                                    arg.compute_ptr_offset_of_n_,
+                                    arg.k_batch_);
+
+            const auto k4 = make_kernel(kernel,
+                                    dim3(gdx4, gdy, gdz),
+                                    dim3(BlockSize),
+                                    0,
+                                    p_a_grid,
+                                    p_b_grid,
+                                    arg.p_ds_grid_,
+                                    p_e_grid,
+                                    arg.a_element_op_,
+                                    arg.b_element_op_,
+                                    arg.cde_element_op_,
+                                    arg.a_grid_desc_ak0_m_ak1_container_[3],
+                                    arg.b_grid_desc_bk0_n_bk1_container_[3],
+                                    arg.ds_grid_desc_mblock_mperblock_nblock_nperblock_container_[3],
+                                    arg.e_grid_desc_mblock_mperblock_nblock_nperblock_container_[3],
+                                    arg.block_2_etile_map_container_[3],
+                                    arg.compute_ptr_offset_of_batch_,
+                                    arg.compute_ptr_offset_of_n_,
+                                    arg.k_batch_);
+
+            ave_time += launch_and_time_kernels(make_tuple(sc1_, sc2_, sc3_, sc4_), make_tuple(k1, k2, k3, k4));
+
+            // for(std::size_t i = 0; i < arg.a_grid_desc_ak0_m_ak1_container_.size(); i++)
+            // {
+
+            //     if(!GridwiseGemm::CheckValidity(arg.a_grid_desc_m_k_container_[i],
+            //                                     arg.b_grid_desc_n_k_container_[i],
+            //                                     arg.ds_grid_desc_m_n_container_[i],
+            //                                     arg.e_grid_desc_m_n_container_[i],
+            //                                     arg.block_2_etile_map_container_[i],
+            //                                     arg.k_batch_))
+            //     {
+            //         throw std::runtime_error("wrong! device_op has invalid setting");
+            //     }
+
+            //     const index_t gdx = arg.block_2_etile_map_container_[i].CalculateGridSize(
+            //         arg.e_grid_desc_m_n_container_[i]);
+
+            //     const auto GemmK = arg.a_grid_desc_m_k_container_[i].GetLength(I1);
+
+            //     auto launch_kernel = [&](auto has_main_k_block_loop) {
+            //         constexpr bool has_main_loop = has_main_k_block_loop.value;
+
+            //         const auto kernel = kernel_grouped_conv_bwd_data_multiple_d_xdl_cshuffle<
+            //             GridwiseGemm,
+            //             ADataType, // TODO: distiguish A/B datatype
+            //             typename GridwiseGemm::DsGridPointer,
+            //             EDataType,
+            //             AElementwiseOp,
+            //             BElementwiseOp,
+            //             CDEElementwiseOp,
+            //             DeviceOp::AGridDesc_AK0_M_AK1,
+            //             DeviceOp::BGridDesc_BK0_N_BK1,
+            //             DeviceOp::DsGridDesc_MBlock_MPerBlock_NBlock_NPerBlock,
+            //             DeviceOp::EGridDesc_MBlock_MPerBlock_NBlock_NPerBlock,
+            //             Block2ETileMap,
+            //             ComputePtrOffsetOfStridedBatch<I1, I1, NumDTensor>,
+            //             ComputePtrOffsetOfStridedBatch<I1, I1, I0>,
+            //             has_main_loop,
+            //             ElementOp>;
+
+            //         return launch_and_time_kernel(
+            //             sc,
+            //             kernel,
+            //             dim3(gdx, gdy, gdz),
+            //             dim3(BlockSize),
+            //             0,
+            //             p_a_grid,
+            //             p_b_grid,
+            //             arg.p_ds_grid_,
+            //             p_e_grid,
+            //             arg.a_element_op_,
+            //             arg.b_element_op_,
+            //             arg.cde_element_op_,
+            //             arg.a_grid_desc_ak0_m_ak1_container_[i],
+            //             arg.b_grid_desc_bk0_n_bk1_container_[i],
+            //             arg.ds_grid_desc_mblock_mperblock_nblock_nperblock_container_[i],
+            //             arg.e_grid_desc_mblock_mperblock_nblock_nperblock_container_[i],
+            //             arg.block_2_etile_map_container_[i],
+            //             arg.compute_ptr_offset_of_batch_,
+            //             arg.compute_ptr_offset_of_n_,
+            //             arg.k_batch_);
+            //     };
+
+            //     if(GridwiseGemm::CalculateHasMainKBlockLoop(GemmK, arg.k_batch_))
+            //     {
+            //         ave_time += launch_kernel(integral_constant<bool, true>{});
+            //     }
+            //     else
+            //     {
+            //         ave_time += launch_kernel(integral_constant<bool, false>{});
+            //     }
+            // }
 
             return ave_time;
         }
@@ -1085,11 +1226,11 @@ struct DeviceGroupedConvBwdDataMultipleD_Xdl_CShuffle_v1
             }
             if(arg.k_batch_ > 1)
             {
-                if constexpr(IsSplitKSupported)
-                {
-                    ave_time +=
-                        RunMultiDGemm<InMemoryDataOperationEnum::AtomicAdd>(arg, stream_config);
-                }
+                // if constexpr(IsSplitKSupported)
+                // {
+                //     ave_time +=
+                //         RunMultiDGemm<InMemoryDataOperationEnum::AtomicAdd>(arg, stream_config);
+                // }
             }
             else
             {
